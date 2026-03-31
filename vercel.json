@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd client && pnpm build && cd .. && mv client/dist dist",
+  "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
