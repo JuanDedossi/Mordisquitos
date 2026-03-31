@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# Vite config compiled output
+client/vite.config.js
+client/vite.config.d.ts
+
+# Coverage
+coverage/
+
+# Temp
+tmp/
+temp/
+
+# AI Agent config (local-only)
+.agent/
+.clinerules
+agent.md
+context-management-plan.md
+memory-bank/
+.copilot/
+.gemini/
+.cursor/
+AGENTS.md

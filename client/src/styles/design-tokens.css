@@ -1,0 +1,38 @@
+:root {
+  /* Colors — Stitch Design System "The Digital Atelier" */
+  --color-primary: #ce631b; /* Terracotta */
+  --color-secondary: #963c0a; /* Sage Green */
+  --color-tertiary: #dda15e; /* Golden Amber */
+  --color-neutral: #fefae0; /* Cream */
+  --color-surface: #ffffff; /* White */
+  --color-on-primary: #fefae0; /* Text on primary */
+  --color-on-secondary: #fefae0; /* Text on secondary */
+  --color-text-primary: #1a1a1a; /* Main text */
+  --color-text-secondary: #6b7280; /* Secondary text */
+  --color-success: #10b981; /* Stock OK */
+  --color-warning: #f59e0b; /* Low stock */
+  --color-error: #ef4444; /* Errors */
+
+  /* Typography */
+  --font-headline: "Noto Serif", serif;
+  --font-body: "Manrope", sans-serif;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows — ambient, no hard borders */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}

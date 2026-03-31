@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2021",
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "paths": {}
+  },
+  "include": ["api/**/*", "server/src/**/*"],
+  "exclude": ["node_modules", "dist", "client"]
+}
