@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm --filter client build && echo '=== PWD ===' && pwd && echo '=== ROOT ===' && ls -la && echo '=== CLIENT ===' && ls -la client/",
+  "buildCommand": "cd client && pnpm build && cd .. && mv client/dist dist",
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
