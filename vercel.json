@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm --filter client build",
+  "outputDirectory": "client/dist",
   "functions": {
     "api/index.ts": {
       "includeFiles": "server/src/**"
