@@ -279,13 +279,22 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
                 Margen aplicado: <strong>{selectedRule.name} ({selectedRule.marginPercentage}%)</strong>
               </span>
             )}
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {sellUnit === 'kg'
-                ? `Precio por kg: ${fmt(sellingPrice)}`
-                : yieldU > 1
-                ? `Precio por unidad (rinde ${yieldU}): ${fmt(sellingPrice)}`
-                : `Precio de venta: ${fmt(sellingPrice)}`}
-            </span>
+            {sellUnit === 'kg' ? (
+              <>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Precio por 100g: {fmt(sellingPrice / 10)}
+                </span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  ({fmt(sellingPrice)}/kg)
+                </span>
+              </>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                {yieldU > 1
+                  ? `Precio por unidad (rinde ${yieldU}): ${fmt(sellingPrice)}`
+                  : `Precio de venta: ${fmt(sellingPrice)}`}
+              </span>
+            )}
           </div>
         )}
 

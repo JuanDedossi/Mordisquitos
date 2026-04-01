@@ -19,6 +19,7 @@ export interface Recipe {
   yieldGrams: number;
   yieldUnits: number;
   pricePerKg: number;
+  pricePer100g: number;
   stock: number;
   isActive: boolean;
   createdAt: string;

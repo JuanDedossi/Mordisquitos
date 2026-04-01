@@ -22,6 +22,7 @@ export interface EnrichedRecipe {
   yieldGrams: number;
   yieldUnits: number;
   pricePerKg: number;
+  pricePer100g: number;
   stock: number;
   isActive: boolean;
   createdAt: Date;
@@ -123,6 +124,8 @@ async function enrichRecipes(
 
     const obj = (recipe as any).toObject();
 
+    const pricePer100g = sellUnit === 'kg' ? pricePerKg / 10 : 0;
+
     return {
       ...obj,
       ingredients: enrichedIngredients,
@@ -134,6 +137,7 @@ async function enrichRecipes(
       yieldGrams,
       yieldUnits,
       pricePerKg,
+      pricePer100g,
     };
   });
 }

@@ -104,9 +104,16 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCard
                   {recipe.profitRuleName} · {recipe.marginPercentage}% margen
                 </p>
               </div>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap', marginLeft: 'var(--space-md)' }}>
-                {recipe.sellUnit === 'kg' ? `${fmt(recipe.sellingPrice)}/kg` : fmt(recipe.sellingPrice)}
-              </span>
+              <div style={{ textAlign: 'right', marginLeft: 'var(--space-md)' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap', display: 'block' }}>
+                  {recipe.sellUnit === 'kg' ? `${fmt(recipe.pricePer100g)}` : fmt(recipe.sellingPrice)}
+                </span>
+                {recipe.sellUnit === 'kg' && (
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                    {fmt(recipe.sellingPrice)}/kg
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
@@ -159,13 +166,22 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCard
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               Margen ({recipe.marginPercentage}%): <strong>{fmt(recipe.sellingPrice - recipe.cost)}</strong>
             </span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {recipe.sellUnit === 'kg'
-                ? `Precio por kg: ${fmt(recipe.sellingPrice)}`
-                : recipe.yieldUnits > 1
-                ? `Precio por unidad (rinde ${recipe.yieldUnits}): ${fmt(recipe.sellingPrice)}`
-                : `Precio de venta: ${fmt(recipe.sellingPrice)}`}
-            </span>
+            {recipe.sellUnit === 'kg' ? (
+              <>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Precio por 100g: {fmt(recipe.pricePer100g)}
+                </span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                  ({fmt(recipe.sellingPrice)}/kg)
+                </span>
+              </>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                {recipe.yieldUnits > 1
+                  ? `Precio por unidad (rinde ${recipe.yieldUnits}): ${fmt(recipe.sellingPrice)}`
+                  : `Precio de venta: ${fmt(recipe.sellingPrice)}`}
+              </span>
+            )}
           </div>
         </div>
       )}
