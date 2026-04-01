@@ -6,7 +6,13 @@ interface StockEditorProps {
   unit?: string;
 }
 
-export function StockEditor({ stock, onChange, disabled, step = 1, unit = 'u.' }: StockEditorProps) {
+export function StockEditor({
+  stock,
+  onChange,
+  disabled,
+  step = 1,
+  // unit = 'u.',
+}: StockEditorProps) {
   const handleDecrement = () => {
     if (stock <= 0) return;
     void onChange(Math.max(0, stock - step));
@@ -17,7 +23,9 @@ export function StockEditor({ stock, onChange, disabled, step = 1, unit = 'u.' }
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}
+    >
       <button
         onClick={handleDecrement}
         disabled={disabled || stock <= 0}
@@ -31,7 +39,10 @@ export function StockEditor({ stock, onChange, disabled, step = 1, unit = 'u.' }
           fontFamily: 'var(--font-body)',
           fontSize: '1rem',
           fontWeight: 700,
-          color: stock > 0 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+          color:
+            stock > 0
+              ? 'var(--color-text-primary)'
+              : 'var(--color-text-secondary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
