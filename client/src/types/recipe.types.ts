@@ -15,6 +15,7 @@ export interface Recipe {
   profitRuleName: string;
   marginPercentage: number;
   sellingPrice: number;
+  customSellingPrice: number | null;
   sellUnit: string;
   yieldGrams: number;
   yieldUnits: number;

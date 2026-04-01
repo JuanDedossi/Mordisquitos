@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MdEdit, MdDelete, MdExpandMore, MdExpandLess, MdCheck, MdClose } from 'react-icons/md';
+import { MdEdit, MdDelete, MdExpandMore, MdExpandLess, MdCheck, MdClose, MdAttachMoney } from 'react-icons/md';
 import type { Recipe, UpdateRecipePayload } from '../../types/recipe.types';
 import type { ProfitRule } from '../../types/profit-rule.types';
 
@@ -8,13 +8,16 @@ interface RecipeCardProps {
   profitRules: ProfitRule[];
   onEdit: (id: string, payload: UpdateRecipePayload) => Promise<void>;
   onDelete: (id: string) => void;
+  onUpdatePrice: (id: string, price: number | null) => Promise<void>;
 }
 
-export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCardProps) {
+export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePrice }: RecipeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState(recipe.name);
   const [editRuleId, setEditRuleId] = useState(recipe.profitRuleId);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [editPrice, setEditPrice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const fmt = (v: number) =>
@@ -38,6 +41,37 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCard
     setEditName(recipe.name);
     setEditRuleId(recipe.profitRuleId);
     setEditingName(false);
+  };
+
+  const handlePriceEdit = () => {
+    setEditPrice(recipe.sellingPrice.toFixed(2));
+    setEditingPrice(true);
+  };
+
+  const handlePriceSave = async () => {
+    const val = parseFloat(editPrice);
+    if (isNaN(val) || val <= 0) return;
+    setLoading(true);
+    try {
+      await onUpdatePrice(recipe._id, val);
+      setEditingPrice(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePriceReset = async () => {
+    setLoading(true);
+    try {
+      await onUpdatePrice(recipe._id, null);
+      setEditingPrice(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePriceCancel = () => {
+    setEditingPrice(false);
   };
 
   return (
@@ -105,13 +139,41 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCard
                 </p>
               </div>
               <div style={{ textAlign: 'right', marginLeft: 'var(--space-md)' }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap', display: 'block' }}>
-                  {recipe.sellUnit === 'kg' ? `${fmt(recipe.pricePer100g)}` : fmt(recipe.sellingPrice)}
-                </span>
-                {recipe.sellUnit === 'kg' && (
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                    {fmt(recipe.sellingPrice)}/kg
-                  </span>
+                {editingPrice ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>$</span>
+                    <input
+                      type="number"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      autoFocus
+                      min="0"
+                      step="0.01"
+                      style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, width: '80px', border: 'none', borderBottom: '2px solid var(--color-primary)', outline: 'none', background: 'transparent', color: 'var(--color-primary)', textAlign: 'right' }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handlePriceSave(); if (e.key === 'Escape') handlePriceCancel(); }}
+                    />
+                    <button onClick={handlePriceSave} disabled={loading} style={{ ...iconBtnStyle, color: 'var(--color-success)' }}><MdCheck size={16} /></button>
+                    <button onClick={handlePriceCancel} disabled={loading} style={iconBtnStyle}><MdClose size={16} /></button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                        {recipe.sellUnit === 'kg' ? `${fmt(recipe.pricePer100g)}` : fmt(recipe.sellingPrice)}
+                      </span>
+                      <button onClick={handlePriceEdit} style={{ ...iconBtnStyle, padding: '2px' }} title="Editar precio"><MdAttachMoney size={14} /></button>
+                    </div>
+                    {recipe.sellUnit === 'kg' && (
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', display: 'block' }}>
+                        {fmt(recipe.sellingPrice)}/kg
+                      </span>
+                    )}
+                    {recipe.customSellingPrice !== null && (
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.65rem', color: 'var(--color-warning)', whiteSpace: 'nowrap', display: 'block', cursor: 'pointer' }} onClick={handlePriceReset} title="Precio manual — click para resetear">
+                        precio manual ↺
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -78,6 +78,11 @@ export function RecipesPage() {
     await fetchRecipes();
   };
 
+  const handleUpdatePrice = async (id: string, price: number | null) => {
+    const updated = await recipesService.updatePrice(id, price);
+    setRecipes((prev) => prev.map((r) => (r._id === id ? updated : r)));
+  };
+
   return (
     <div style={{ paddingBottom: '150px' }}>
       {/* Header */}
@@ -143,6 +148,7 @@ export function RecipesPage() {
                 profitRules={profitRules}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onUpdatePrice={handleUpdatePrice}
               />
             ))}
           </div>

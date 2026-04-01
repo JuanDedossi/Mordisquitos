@@ -40,6 +40,11 @@ export const recipesService = {
     return data.data;
   },
 
+  async updatePrice(id: string, customSellingPrice: number | null): Promise<Recipe> {
+    const { data } = await api.patch(`/recipes/${id}/price`, { customSellingPrice });
+    return data.data;
+  },
+
   async delete(id: string): Promise<void> {
     await api.delete(`/recipes/${id}`);
   },

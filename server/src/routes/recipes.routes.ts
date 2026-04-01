@@ -4,6 +4,7 @@ import {
   findRecipeById,
   createRecipe,
   updateRecipe,
+  updateRecipePrice,
   updateRecipeStock,
   toggleRecipeActive,
   deleteRecipe,
@@ -67,6 +68,16 @@ router.patch('/:id/stock', async (req: Request, res: Response, next: NextFunctio
   try {
     const id = req.params.id as string;
     const data = await updateRecipeStock(id, req.body);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id/price', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const data = await updateRecipePrice(id, req.body);
     res.json({ success: true, data });
   } catch (err) {
     next(err);

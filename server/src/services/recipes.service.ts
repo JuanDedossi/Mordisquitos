@@ -21,6 +21,7 @@ export interface EnrichedRecipe {
   sellUnit: string;
   yieldGrams: number;
   yieldUnits: number;
+  customSellingPrice: number | null;
   pricePerKg: number;
   pricePer100g: number;
   stock: number;
@@ -45,6 +46,10 @@ export interface UpdateRecipeInput {
   sellUnit?: string;
   yieldGrams?: number;
   yieldUnits?: number;
+}
+
+export interface UpdateRecipePriceInput {
+  customSellingPrice: number | null;
 }
 
 export interface UpdateStockInput {
@@ -110,11 +115,15 @@ async function enrichRecipes(
     const sellUnit = recipe.sellUnit ?? 'unidad';
     const yieldGrams = recipe.yieldGrams ?? 0;
     const yieldUnits = (recipe as any).yieldUnits ?? 1;
+    const customSellingPrice: number | null = (recipe as any).customSellingPrice ?? null;
 
     let sellingPrice: number;
     let pricePerKg = 0;
 
-    if (sellUnit === 'kg' && yieldGrams > 0) {
+    if (customSellingPrice !== null) {
+      sellingPrice = customSellingPrice;
+      if (sellUnit === 'kg') pricePerKg = customSellingPrice;
+    } else if (sellUnit === 'kg' && yieldGrams > 0) {
       const costPerKg = (totalCost / yieldGrams) * 1000;
       pricePerKg = costPerKg * (1 + margin / 100);
       sellingPrice = pricePerKg;
@@ -136,6 +145,7 @@ async function enrichRecipes(
       sellUnit,
       yieldGrams,
       yieldUnits,
+      customSellingPrice,
       pricePerKg,
       pricePer100g,
     };
@@ -252,6 +262,7 @@ export async function updateRecipe(
       ingredientId: new Types.ObjectId(i.ingredientId),
       quantity: i.quantity,
     }));
+    updates.customSellingPrice = null;
   }
 
   if (dto.sellUnit !== undefined) updates.sellUnit = dto.sellUnit;
@@ -261,6 +272,19 @@ export async function updateRecipe(
   const updated = await Recipe.findByIdAndUpdate(
     id,
     { $set: updates },
+    { new: true },
+  ).exec();
+  if (!updated) throw { status: 404, message: 'Receta no encontrada' };
+  return enrichRecipe(updated as RecipeDocument);
+}
+
+export async function updateRecipePrice(
+  id: string,
+  dto: UpdateRecipePriceInput,
+): Promise<EnrichedRecipe> {
+  const updated = await Recipe.findByIdAndUpdate(
+    id,
+    { $set: { customSellingPrice: dto.customSellingPrice } },
     { new: true },
   ).exec();
   if (!updated) throw { status: 404, message: 'Receta no encontrada' };

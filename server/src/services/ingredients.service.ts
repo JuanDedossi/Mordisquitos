@@ -3,6 +3,7 @@ import {
   IngredientDocument,
 } from '../models/ingredient.model';
 import { PurchaseHistory } from '../models/purchase-history.model';
+import { Recipe } from '../models/recipe.model';
 
 export interface RegisterPurchaseInput {
   ingredientName: string;
@@ -87,9 +88,19 @@ export async function registerPurchase(
       costPerUnit,
     })) as IngredientDocument;
   } else {
-    const updateFields: Record<string, number> = isWeight
-      ? { costPerKg, costPer100g }
-      : { costPerUnit };
+    // Obtener la unidad real del ingrediente desde la DB (el cliente no la envía)
+    const existing = await Ingredient.findById(dto.ingredientId).exec() as IngredientDocument | null;
+    if (!existing) throw { status: 404, message: 'Ingrediente no encontrado' };
+
+    const realIsWeight = existing.unit === 'kg';
+    const realCostPerKg = realIsWeight ? (dto.pricePaid / dto.quantityPurchased) * 1000 : 0;
+    const realCostPer100g = realIsWeight ? realCostPerKg / 10 : 0;
+    const realCostPerUnit = !realIsWeight ? dto.pricePaid / dto.quantityPurchased : 0;
+
+    const updateFields: Record<string, number> = realIsWeight
+      ? { costPerKg: realCostPerKg, costPer100g: realCostPer100g }
+      : { costPerUnit: realCostPerUnit };
+
     ingredient = (await Ingredient.findByIdAndUpdate(
       dto.ingredientId,
       updateFields,
@@ -98,16 +109,25 @@ export async function registerPurchase(
     if (!ingredient) {
       throw { status: 404, message: 'Ingrediente no encontrado' };
     }
+
+    // Resetear customSellingPrice en recetas que usen este ingrediente
+    await Recipe.updateMany(
+      { 'ingredients.ingredientId': ingredient._id, customSellingPrice: { $ne: null } },
+      { $set: { customSellingPrice: null } },
+    ).exec();
   }
+
+  const finalUnit = ingredient.unit;
+  const finalIsWeight = finalUnit === 'kg';
 
   await PurchaseHistory.create({
     ingredientId: ingredient._id,
     ingredientName: ingredient.name,
-    unit,
+    unit: finalUnit,
     quantityPurchased: dto.quantityPurchased,
     pricePaid: dto.pricePaid,
-    costPerKgAtPurchase: isWeight ? costPerKg : undefined,
-    costPerUnitAtPurchase: !isWeight ? costPerUnit : undefined,
+    costPerKgAtPurchase: finalIsWeight ? (dto.pricePaid / dto.quantityPurchased) * 1000 : undefined,
+    costPerUnitAtPurchase: !finalIsWeight ? dto.pricePaid / dto.quantityPurchased : undefined,
   });
 
   return ingredient;
