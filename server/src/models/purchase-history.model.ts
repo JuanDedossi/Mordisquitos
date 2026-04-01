@@ -35,7 +35,7 @@ const PurchaseHistorySchema = new Schema<PurchaseHistoryDocument>(
 );
 
 export const PurchaseHistory =
-  mongoose.models.PurchaseHistory ||
+  (mongoose.models.PurchaseHistory as mongoose.Model<PurchaseHistoryDocument>) ||
   mongoose.model<PurchaseHistoryDocument>(
     'PurchaseHistory',
     PurchaseHistorySchema,

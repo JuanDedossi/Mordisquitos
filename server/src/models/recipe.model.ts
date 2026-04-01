@@ -70,5 +70,5 @@ const RecipeSchema = new Schema<RecipeDocument>(
 );
 
 export const Recipe =
-  mongoose.models.Recipe ||
+  (mongoose.models.Recipe as mongoose.Model<RecipeDocument>) ||
   mongoose.model<RecipeDocument>('Recipe', RecipeSchema);

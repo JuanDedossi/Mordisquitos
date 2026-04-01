@@ -43,5 +43,5 @@ const TraySchema = new Schema<TrayDocument>(
 );
 
 export const Tray =
-  mongoose.models.Tray ||
+  (mongoose.models.Tray as mongoose.Model<TrayDocument>) ||
   mongoose.model<TrayDocument>('Tray', TraySchema);
