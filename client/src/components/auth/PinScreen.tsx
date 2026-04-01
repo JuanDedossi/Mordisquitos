@@ -41,8 +41,8 @@ export function PinScreen() {
   return (
     <div style={styles.overlay}>
       <div style={styles.card}>
-        <div style={styles.logo}>🐾</div>
-        <h1 style={styles.title}>Mordisquitos</h1>
+        <div style={styles.logo}>🍪</div>
+        <h1 style={styles.title}>ByteMe</h1>
         <p style={styles.subtitle}>Ingresá el PIN para continuar</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
