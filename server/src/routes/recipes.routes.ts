@@ -17,8 +17,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, parseInt(req.query.limit as string, 10) || 10);
     const search = req.query.search as string | undefined;
+    const isSubRecipe =
+      req.query.isSubRecipe === 'true'
+        ? true
+        : req.query.isSubRecipe === 'false'
+          ? false
+          : undefined;
 
-    const { data, total } = await findAllRecipes(page, limit, search);
+    const { data, total } = await findAllRecipes(page, limit, search, isSubRecipe);
     res.json({
       success: true,
       data,

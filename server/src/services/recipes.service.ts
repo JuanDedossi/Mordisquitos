@@ -12,6 +12,7 @@ export interface EnrichedRecipe {
     ingredientUnit: string;
     quantity: number;
     cost: number;
+    isSubRecipe?: boolean;
   }[];
   cost: number;
   profitRuleId: Types.ObjectId;
@@ -26,6 +27,7 @@ export interface EnrichedRecipe {
   pricePer100g: number;
   stock: number;
   isActive: boolean;
+  isSubRecipe: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,19 +35,23 @@ export interface EnrichedRecipe {
 export interface CreateRecipeInput {
   name: string;
   ingredients: { ingredientId: string; quantity: number }[];
+  subRecipes?: { recipeId: string; quantity: number }[];
   profitRuleId: string;
   sellUnit?: string;
   yieldGrams?: number;
   yieldUnits?: number;
+  isSubRecipe?: boolean;
 }
 
 export interface UpdateRecipeInput {
   name?: string;
   ingredients?: { ingredientId: string; quantity: number }[];
+  subRecipes?: { recipeId: string; quantity: number }[];
   profitRuleId?: string;
   sellUnit?: string;
   yieldGrams?: number;
   yieldUnits?: number;
+  isSubRecipe?: boolean;
 }
 
 export interface UpdateRecipePriceInput {
@@ -58,26 +64,48 @@ export interface UpdateStockInput {
 
 async function enrichRecipes(
   recipes: RecipeDocument[],
+  depth = 0,
 ): Promise<EnrichedRecipe[]> {
   if (recipes.length === 0) return [];
 
   const ingredientIds = [
     ...new Set(
       recipes.flatMap((r) =>
-        r.ingredients.map((i) => i.ingredientId.toString()),
+        r.ingredients
+          .filter((i) => ((i as any).type ?? 'ingredient') === 'ingredient' && i.ingredientId)
+          .map((i) => i.ingredientId!.toString()),
       ),
     ),
   ];
+
+  const subRecipeIds = [
+    ...new Set(
+      recipes.flatMap((r) =>
+        r.ingredients
+          .filter((i) => (i as any).type === 'subRecipe' && (i as any).recipeId)
+          .map((i) => (i as any).recipeId.toString()),
+      ),
+    ),
+  ];
+
   const ruleIds = [
     ...new Set(recipes.map((r) => r.profitRuleId.toString())),
   ];
 
   const [ingredients, ruleResults] = await Promise.all([
-    findIngredientsByIds(ingredientIds),
+    ingredientIds.length > 0 ? findIngredientsByIds(ingredientIds) : Promise.resolve([]),
     Promise.all(
       ruleIds.map((id) => findProfitRuleById(id).catch(() => null)),
     ),
   ]);
+
+  // Load sub-recipe costs (max 1 level deep to prevent infinite recursion)
+  let subRecipeMap = new Map<string, EnrichedRecipe>();
+  if (depth < 1 && subRecipeIds.length > 0) {
+    const subRawRecipes = await Recipe.find({ _id: { $in: subRecipeIds } }).exec();
+    const enrichedSubs = await enrichRecipes(subRawRecipes as RecipeDocument[], depth + 1);
+    subRecipeMap = new Map(enrichedSubs.map((r) => [r._id.toString(), r]));
+  }
 
   const ingredientMap = new Map(
     ingredients.map((i) => [i._id.toString(), i]),
@@ -93,7 +121,31 @@ async function enrichRecipes(
     let totalCost = 0;
 
     const enrichedIngredients = recipe.ingredients.map((ri) => {
-      const ing = ingredientMap.get(ri.ingredientId.toString());
+      const itemType = (ri as any).type ?? 'ingredient';
+
+      if (itemType === 'subRecipe') {
+        const recipeId = (ri as any).recipeId?.toString() ?? '';
+        const sub = subRecipeMap.get(recipeId);
+        let cost = 0;
+        if (sub) {
+          if (sub.sellUnit === 'kg' && sub.yieldGrams > 0) {
+            cost = (sub.cost / sub.yieldGrams) * ri.quantity;
+          } else {
+            cost = (sub.cost / (sub.yieldUnits || 1)) * ri.quantity;
+          }
+        }
+        totalCost += cost;
+        return {
+          ingredientId: recipeId,
+          ingredientName: sub?.name ?? 'Sub-receta desconocida',
+          ingredientUnit: sub?.sellUnit === 'kg' ? 'g' : 'u.',
+          quantity: ri.quantity,
+          cost,
+          isSubRecipe: true,
+        };
+      }
+
+      const ing = ingredientMap.get(ri.ingredientId!.toString());
       let cost = 0;
       if (ing) {
         cost =
@@ -103,11 +155,12 @@ async function enrichRecipes(
       }
       totalCost += cost;
       return {
-        ingredientId: ri.ingredientId.toString(),
+        ingredientId: ri.ingredientId!.toString(),
         ingredientName: ing?.name ?? 'Desconocido',
         ingredientUnit: ing?.unit ?? 'kg',
         quantity: ri.quantity,
         cost,
+        isSubRecipe: false,
       };
     });
 
@@ -116,6 +169,7 @@ async function enrichRecipes(
     const yieldGrams = recipe.yieldGrams ?? 0;
     const yieldUnits = (recipe as any).yieldUnits ?? 1;
     const customSellingPrice: number | null = (recipe as any).customSellingPrice ?? null;
+    const isSubRecipe = (recipe as any).isSubRecipe ?? false;
 
     let sellingPrice: number;
     let pricePerKg = 0;
@@ -148,6 +202,7 @@ async function enrichRecipes(
       customSellingPrice,
       pricePerKg,
       pricePer100g,
+      isSubRecipe,
     };
   });
 }
@@ -163,8 +218,11 @@ export async function findAllRecipes(
   page = 1,
   limit = 10,
   search?: string,
+  isSubRecipe?: boolean,
 ): Promise<{ data: EnrichedRecipe[]; total: number }> {
-  const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+  const query: Record<string, unknown> = {};
+  if (search) query.name = { $regex: search, $options: 'i' };
+  if (isSubRecipe !== undefined) query.isSubRecipe = isSubRecipe;
 
   const [rawData, total] = await Promise.all([
     Recipe.find(query)
@@ -208,16 +266,27 @@ export async function createRecipe(
     throw { status: 404, message: 'Uno o más ingredientes no existen' };
   }
 
-  const recipe = await Recipe.create({
-    name: dto.name,
-    ingredients: dto.ingredients.map((i) => ({
+  const combinedIngredients = [
+    ...dto.ingredients.map((i) => ({
+      type: 'ingredient' as const,
       ingredientId: new Types.ObjectId(i.ingredientId),
       quantity: i.quantity,
     })),
+    ...(dto.subRecipes ?? []).map((sr) => ({
+      type: 'subRecipe' as const,
+      recipeId: new Types.ObjectId(sr.recipeId),
+      quantity: sr.quantity,
+    })),
+  ];
+
+  const recipe = await Recipe.create({
+    name: dto.name,
+    ingredients: combinedIngredients,
     profitRuleId: new Types.ObjectId(dto.profitRuleId),
     sellUnit: dto.sellUnit ?? 'unidad',
     yieldGrams: dto.yieldGrams,
     yieldUnits: dto.yieldUnits ?? 1,
+    isSubRecipe: dto.isSubRecipe ?? false,
   });
 
   return enrichRecipe(recipe as RecipeDocument);
@@ -251,20 +320,37 @@ export async function updateRecipe(
     updates.profitRuleId = new Types.ObjectId(dto.profitRuleId);
   }
 
-  if (dto.ingredients) {
-    const found = await findIngredientsByIds(
-      dto.ingredients.map((i) => i.ingredientId),
-    );
-    if (found.length !== dto.ingredients.length) {
-      throw { status: 404, message: 'Uno o más ingredientes no existen' };
+  const hasIngredientChanges = dto.ingredients !== undefined || dto.subRecipes !== undefined;
+
+  if (hasIngredientChanges) {
+    const ingredientItems = dto.ingredients ?? [];
+    const subRecipeItems = dto.subRecipes ?? [];
+
+    if (ingredientItems.length > 0) {
+      const found = await findIngredientsByIds(
+        ingredientItems.map((i) => i.ingredientId),
+      );
+      if (found.length !== ingredientItems.length) {
+        throw { status: 404, message: 'Uno o más ingredientes no existen' };
+      }
     }
-    updates.ingredients = dto.ingredients.map((i) => ({
-      ingredientId: new Types.ObjectId(i.ingredientId),
-      quantity: i.quantity,
-    }));
+
+    updates.ingredients = [
+      ...ingredientItems.map((i) => ({
+        type: 'ingredient',
+        ingredientId: new Types.ObjectId(i.ingredientId),
+        quantity: i.quantity,
+      })),
+      ...subRecipeItems.map((sr) => ({
+        type: 'subRecipe',
+        recipeId: new Types.ObjectId(sr.recipeId),
+        quantity: sr.quantity,
+      })),
+    ];
     updates.customSellingPrice = null;
   }
 
+  if (dto.isSubRecipe !== undefined) updates.isSubRecipe = dto.isSubRecipe;
   if (dto.sellUnit !== undefined) updates.sellUnit = dto.sellUnit;
   if (dto.yieldGrams !== undefined) updates.yieldGrams = dto.yieldGrams;
   if (dto.yieldUnits !== undefined) updates.yieldUnits = dto.yieldUnits;

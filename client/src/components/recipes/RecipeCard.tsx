@@ -137,6 +137,23 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 'var(--space-xs) 0 0' }}>
                   {recipe.profitRuleName} · {recipe.marginPercentage}% margen
                 </p>
+                {recipe.isSubRecipe && (
+                  <span style={{
+                    display: 'inline-block',
+                    marginTop: 'var(--space-xs)',
+                    padding: '2px var(--space-xs)',
+                    background: 'rgba(188, 108, 37, 0.12)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}>
+                    Sub-receta
+                  </span>
+                )}
               </div>
               <div style={{ textAlign: 'right', marginLeft: 'var(--space-md)' }}>
                 {editingPrice ? (
@@ -209,7 +226,12 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
             <tbody>
               {recipe.ingredients.map((ing) => (
                 <tr key={ing.ingredientId}>
-                  <td style={tdStyle}>{ing.ingredientName}</td>
+                  <td style={tdStyle}>
+                    {ing.isSubRecipe && (
+                      <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-primary)', marginRight: '4px', textTransform: 'uppercase' }}>SR</span>
+                    )}
+                    {ing.ingredientName}
+                  </td>
                   <td style={tdStyle}>{ing.quantity}{ing.ingredientUnit === 'unidad' ? ' u.' : 'g'}</td>
                   <td style={tdStyle}>{fmt(ing.cost)}</td>
                 </tr>

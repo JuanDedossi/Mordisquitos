@@ -1,7 +1,9 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IRecipeIngredient {
-  ingredientId: Types.ObjectId;
+  type: 'ingredient' | 'subRecipe';
+  ingredientId?: Types.ObjectId;
+  recipeId?: Types.ObjectId;
   quantity: number;
 }
 
@@ -15,16 +17,27 @@ export interface IRecipe {
   customSellingPrice: number | null;
   stock: number;
   isActive: boolean;
+  isSubRecipe: boolean;
 }
 
 export type RecipeDocument = IRecipe & Document;
 
 const RecipeIngredientSchema = new Schema(
   {
+    type: {
+      type: String,
+      enum: ['ingredient', 'subRecipe'],
+      default: 'ingredient',
+    },
     ingredientId: {
       type: Schema.Types.ObjectId,
       ref: 'Ingredient',
-      required: true,
+      required: false,
+    },
+    recipeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Recipe',
+      required: false,
     },
     quantity: { type: Number, required: true, min: 0 },
   },
@@ -51,6 +64,7 @@ const RecipeSchema = new Schema<RecipeDocument>(
     customSellingPrice: { type: Number, default: null },
     stock: { type: Number, required: true, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
+    isSubRecipe: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

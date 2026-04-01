@@ -4,6 +4,7 @@ export interface RecipeIngredient {
   ingredientUnit: string;
   quantity: number;
   cost: number;
+  isSubRecipe?: boolean;
 }
 
 export interface Recipe {
@@ -23,6 +24,7 @@ export interface Recipe {
   pricePer100g: number;
   stock: number;
   isActive: boolean;
+  isSubRecipe: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,17 +32,21 @@ export interface Recipe {
 export interface CreateRecipePayload {
   name: string;
   ingredients: { ingredientId: string; quantity: number }[];
+  subRecipes?: { recipeId: string; quantity: number }[];
   profitRuleId: string;
   sellUnit?: string;
   yieldGrams?: number;
   yieldUnits?: number;
+  isSubRecipe?: boolean;
 }
 
 export interface UpdateRecipePayload {
   name?: string;
   ingredients?: { ingredientId: string; quantity: number }[];
+  subRecipes?: { recipeId: string; quantity: number }[];
   profitRuleId?: string;
   sellUnit?: string;
   yieldGrams?: number;
   yieldUnits?: number;
+  isSubRecipe?: boolean;
 }

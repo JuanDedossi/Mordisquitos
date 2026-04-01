@@ -22,6 +22,7 @@ export function RecipesPage() {
 
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [profitRules, setProfitRules] = useState<ProfitRule[]>([]);
+  const [subRecipes, setSubRecipes] = useState<Recipe[]>([]);
 
   const limit = 10;
 
@@ -42,9 +43,11 @@ export function RecipesPage() {
     Promise.all([
       ingredientsService.list({ limit: 200 }),
       profitRulesService.list(),
-    ]).then(([ingsRes, rules]) => {
+      recipesService.list({ isSubRecipe: true, limit: 200 }),
+    ]).then(([ingsRes, rules, subRes]) => {
       setIngredients(ingsRes.data);
       setProfitRules(rules);
+      setSubRecipes(subRes.data);
     });
   }, []);
 
@@ -63,6 +66,11 @@ export function RecipesPage() {
     setPage(1);
     setSearch('');
     await fetchRecipes();
+    // Refresh sub-recipes list if the new recipe is a sub-recipe
+    if (payload.isSubRecipe) {
+      const subRes = await recipesService.list({ isSubRecipe: true, limit: 200 });
+      setSubRecipes(subRes.data);
+    }
   };
 
   const handleEdit = async (id: string, payload: UpdateRecipePayload) => {
@@ -190,6 +198,7 @@ export function RecipesPage() {
         onSubmit={handleCreate}
         ingredients={ingredients}
         profitRules={profitRules}
+        subRecipes={subRecipes}
       />
     </div>
   );

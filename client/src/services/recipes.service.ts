@@ -10,7 +10,7 @@ export interface RecipesListResponse {
 }
 
 export const recipesService = {
-  async list(params: { page?: number; limit?: number; search?: string } = {}): Promise<RecipesListResponse> {
+  async list(params: { page?: number; limit?: number; search?: string; isSubRecipe?: boolean } = {}): Promise<RecipesListResponse> {
     const { data } = await api.get('/recipes', { params });
     return data;
   },
