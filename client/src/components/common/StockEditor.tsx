@@ -40,7 +40,7 @@ export function StockEditor({ stock, onChange, disabled, step = 1, unit = 'u.' }
       >
         −
       </button>
-      <span
+      {/* <span
         style={{
           fontFamily: 'var(--font-body)',
           fontSize: '0.9rem',
@@ -51,7 +51,7 @@ export function StockEditor({ stock, onChange, disabled, step = 1, unit = 'u.' }
         }}
       >
         {stock} {unit}
-      </span>
+      </span> */}
       <button
         onClick={handleIncrement}
         disabled={disabled}
