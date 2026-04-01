@@ -43,3 +43,8 @@ img {
   max-width: 100%;
   display: block;
 }
+
+/* Ocultar scrollbar en WebKit (Safari/Chrome mobile) para el nav */
+nav div::-webkit-scrollbar {
+  display: none;
+}
