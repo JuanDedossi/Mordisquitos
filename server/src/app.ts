@@ -5,6 +5,7 @@ import ingredientsRoutes from "./routes/ingredients.routes";
 import recipesRoutes from "./routes/recipes.routes";
 import salesRoutes from "./routes/sales.routes";
 import profitRulesRoutes from "./routes/profit-rules.routes";
+import traysRoutes from "./routes/trays.routes";
 import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
 import { authMiddleware } from "./middleware/auth.middleware";
@@ -37,6 +38,7 @@ app.use("/api/ingredients", ingredientsRoutes);
 app.use("/api/recipes", recipesRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/profit-rules", profitRulesRoutes);
+app.use("/api/trays", traysRoutes);
 
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

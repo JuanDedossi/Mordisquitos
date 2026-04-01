@@ -39,5 +39,5 @@ const SaleSchema = new Schema<SaleDocument>(
 );
 
 export const Sale =
-  mongoose.models.Sale ||
+  (mongoose.models.Sale as mongoose.Model<SaleDocument>) ||
   mongoose.model<SaleDocument>('Sale', SaleSchema);

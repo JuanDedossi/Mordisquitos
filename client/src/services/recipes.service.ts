@@ -10,7 +10,7 @@ export interface RecipesListResponse {
 }
 
 export const recipesService = {
-  async list(params: { page?: number; limit?: number; search?: string } = {}): Promise<RecipesListResponse> {
+  async list(params: { page?: number; limit?: number; search?: string; isSubRecipe?: boolean } = {}): Promise<RecipesListResponse> {
     const { data } = await api.get('/recipes', { params });
     return data;
   },
@@ -37,6 +37,11 @@ export const recipesService = {
 
   async toggleActive(id: string): Promise<Recipe> {
     const { data } = await api.patch(`/recipes/${id}/toggle-active`);
+    return data.data;
+  },
+
+  async updatePrice(id: string, customSellingPrice: number | null): Promise<Recipe> {
+    const { data } = await api.patch(`/recipes/${id}/price`, { customSellingPrice });
     return data.data;
   },
 

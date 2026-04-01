@@ -15,6 +15,7 @@ export function IngredientsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
 
   const limit = 10;
 
@@ -29,6 +30,15 @@ export function IngredientsPage() {
       setLoading(false);
     }
   }, [page, search]);
+
+  const fetchAllIngredients = useCallback(async () => {
+    const res = await ingredientsService.list({ limit: 9999 });
+    setAllIngredients(res.data);
+  }, []);
+
+  useEffect(() => {
+    fetchAllIngredients();
+  }, [fetchAllIngredients]);
 
   useEffect(() => {
     const timer = setTimeout(fetchIngredients, search ? 300 : 0);
@@ -57,7 +67,7 @@ export function IngredientsPage() {
     await ingredientsService.registerPurchase(payload);
     setPage(1);
     setSearch('');
-    await fetchIngredients();
+    await Promise.all([fetchIngredients(), fetchAllIngredients()]);
   };
 
   return (
@@ -169,7 +179,7 @@ export function IngredientsPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handlePurchase}
-        existingIngredients={ingredients}
+        existingIngredients={allIngredients}
       />
     </div>
   );

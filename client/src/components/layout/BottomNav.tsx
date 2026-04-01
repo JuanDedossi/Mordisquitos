@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MdKitchen, MdMenuBook, MdTrendingUp, MdInventory2, MdCalculate } from 'react-icons/md';
+import { MdKitchen, MdMenuBook, MdTrendingUp, MdInventory2, MdCalculate, MdGridView } from 'react-icons/md';
 
 const navItems = [
   { path: '/ingredientes', icon: MdKitchen, label: 'Ingredientes' },
   { path: '/recetas', icon: MdMenuBook, label: 'Recetas' },
   { path: '/margenes', icon: MdTrendingUp, label: 'Márgenes' },
   { path: '/stock', icon: MdInventory2, label: 'Stock' },
+  { path: '/bandejas', icon: MdGridView, label: 'Bandejas' },
   { path: '/calculadora', icon: MdCalculate, label: 'Calculadora' },
 ];
 

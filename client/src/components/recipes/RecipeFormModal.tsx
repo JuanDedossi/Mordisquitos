@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { MdAdd, MdClose } from 'react-icons/md';
 import { Modal } from '../common/Modal';
+import { SearchableSelect } from '../common/SearchableSelect';
 import type { Ingredient } from '../../types/ingredient.types';
 import type { ProfitRule } from '../../types/profit-rule.types';
-import type { CreateRecipePayload } from '../../types/recipe.types';
+import type { CreateRecipePayload, Recipe } from '../../types/recipe.types';
 
 interface IngredientRow {
   id: number;
   ingredientId: string;
+  quantity: string;
+}
+
+interface SubRecipeRow {
+  id: number;
+  recipeId: string;
   quantity: string;
 }
 
@@ -17,16 +24,20 @@ interface RecipeFormModalProps {
   onSubmit: (payload: CreateRecipePayload) => Promise<void>;
   ingredients: Ingredient[];
   profitRules: ProfitRule[];
+  subRecipes?: Recipe[];
 }
 
 let rowCounter = 0;
 
-export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profitRules }: RecipeFormModalProps) {
+export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profitRules, subRecipes = [] }: RecipeFormModalProps) {
   const [name, setName] = useState('');
   const [rows, setRows] = useState<IngredientRow[]>([{ id: ++rowCounter, ingredientId: '', quantity: '' }]);
+  const [subRecipeRows, setSubRecipeRows] = useState<SubRecipeRow[]>([]);
   const [profitRuleId, setProfitRuleId] = useState('');
   const [sellUnit, setSellUnit] = useState<'unidad' | 'kg'>('unidad');
   const [yieldGrams, setYieldGrams] = useState('');
+  const [yieldUnits, setYieldUnits] = useState('1');
+  const [isSubRecipe, setIsSubRecipe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,9 +45,12 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
     if (!isOpen) {
       setName('');
       setRows([{ id: ++rowCounter, ingredientId: '', quantity: '' }]);
+      setSubRecipeRows([]);
       setProfitRuleId(profitRules[0]?._id ?? '');
       setSellUnit('unidad');
       setYieldGrams('');
+      setYieldUnits('1');
+      setIsSubRecipe(false);
       setError('');
     } else {
       setProfitRuleId(profitRules[0]?._id ?? '');
@@ -49,17 +63,33 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
   const getIngredient = (id: string) => ingredients.find((i) => i._id === id);
   const getRule = (id: string) => profitRules.find((r) => r._id === id);
 
-  const validRows = rows.filter((r) => r.ingredientId && parseFloat(r.quantity) > 0);
+  const getSubRecipe = (id: string) => subRecipes.find((r) => r._id === id);
 
-  const totalCost = validRows.reduce((sum, row) => {
+  const validRows = rows.filter((r) => r.ingredientId && parseFloat(r.quantity) > 0);
+  const validSubRecipeRows = subRecipeRows.filter((r) => r.recipeId && parseFloat(r.quantity) > 0);
+
+  const ingredientCost = validRows.reduce((sum, row) => {
     const ing = getIngredient(row.ingredientId);
     if (!ing) return sum;
     const q = parseFloat(row.quantity);
     return sum + (ing.unit === 'unidad' ? ing.costPerUnit * q : (ing.costPerKg * q) / 1000);
   }, 0);
 
+  const subRecipeCost = validSubRecipeRows.reduce((sum, row) => {
+    const sub = getSubRecipe(row.recipeId);
+    if (!sub) return sum;
+    const q = parseFloat(row.quantity);
+    if (sub.sellUnit === 'kg' && sub.yieldGrams > 0) {
+      return sum + (sub.cost / sub.yieldGrams) * q;
+    }
+    return sum + (sub.cost / (sub.yieldUnits || 1)) * q;
+  }, 0);
+
+  const totalCost = ingredientCost + subRecipeCost;
+
   const selectedRule = getRule(profitRuleId);
   const yieldG = parseFloat(yieldGrams);
+  const yieldU = parseInt(yieldUnits) || 1;
 
   let sellingPrice = 0;
   if (selectedRule) {
@@ -67,13 +97,15 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
       const costPerKg = (totalCost / yieldG) * 1000;
       sellingPrice = costPerKg * (1 + selectedRule.marginPercentage / 100);
     } else {
-      sellingPrice = totalCost * (1 + selectedRule.marginPercentage / 100);
+      sellingPrice = (totalCost * (1 + selectedRule.marginPercentage / 100)) / yieldU;
     }
   }
 
+  const hasItems = validRows.length > 0 || validSubRecipeRows.length > 0;
+
   const isValid =
     name.trim().length >= 2 &&
-    validRows.length > 0 &&
+    hasItems &&
     profitRuleId !== '' &&
     (sellUnit !== 'kg' || yieldG > 0);
 
@@ -87,6 +119,18 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
 
   const updateRow = (id: number, field: 'ingredientId' | 'quantity', value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  };
+
+  const addSubRecipeRow = () => {
+    setSubRecipeRows((prev) => [...prev, { id: ++rowCounter, recipeId: '', quantity: '' }]);
+  };
+
+  const removeSubRecipeRow = (id: number) => {
+    setSubRecipeRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateSubRecipeRow = (id: number, field: 'recipeId' | 'quantity', value: string) => {
+    setSubRecipeRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
 
   const handleSubmit = async () => {
@@ -106,9 +150,17 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
           ingredientId: r.ingredientId,
           quantity: parseFloat(r.quantity),
         })),
+        subRecipes: validSubRecipeRows.length > 0
+          ? validSubRecipeRows.map((r) => ({
+              recipeId: r.recipeId,
+              quantity: parseFloat(r.quantity),
+            }))
+          : undefined,
         profitRuleId,
         sellUnit,
         yieldGrams: sellUnit === 'kg' ? yieldG : undefined,
+        yieldUnits: sellUnit === 'unidad' ? yieldU : undefined,
+        isSubRecipe,
       });
       onClose();
     } catch (e: unknown) {
@@ -134,6 +186,55 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
           />
         </div>
 
+        {/* isSubRecipe toggle */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            padding: 'var(--space-sm) var(--space-md)',
+            background: isSubRecipe ? 'rgba(188, 108, 37, 0.08)' : '#f2efd5',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+          onClick={() => setIsSubRecipe((v) => !v)}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 20,
+              borderRadius: 10,
+              background: isSubRecipe ? 'var(--color-primary)' : 'rgba(0,0,0,0.15)',
+              position: 'relative',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: 'white',
+                position: 'absolute',
+                top: 2,
+                left: isSubRecipe ? 18 : 2,
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            />
+          </div>
+          <div>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              Es una sub-receta
+            </span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Activá si esta receta se usa dentro de otras recetas
+            </p>
+          </div>
+        </div>
+
         {/* Ingredients */}
         <div>
           <label style={labelStyle}>Ingredientes</label>
@@ -148,16 +249,13 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
               const unitLabel = ing ? (ing.unit === 'unidad' ? 'u.' : 'g') : 'g';
               return (
                 <div key={row.id} style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
-                  <select
+                  <SearchableSelect
+                    options={ingredients.map((i) => ({ value: i._id, label: `${i.name} (${i.unit === 'unidad' ? 'u.' : 'kg'})` }))}
                     value={row.ingredientId}
-                    onChange={(e) => updateRow(row.id, 'ingredientId', e.target.value)}
-                    style={{ ...inputStyle, flex: 2, padding: 'var(--space-xs) var(--space-sm)' }}
-                  >
-                    <option value="">Ingrediente...</option>
-                    {ingredients.map((i) => (
-                      <option key={i._id} value={i._id}>{i.name} ({i.unit === 'unidad' ? 'u.' : 'kg'})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => updateRow(row.id, 'ingredientId', val)}
+                    placeholder="Ingrediente..."
+                    style={{ flex: 2 }}
+                  />
                   <div style={{ position: 'relative', flex: 1 }}>
                     <input
                       type="number"
@@ -184,6 +282,60 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
             <MdAdd size={18} /> Agregar ingrediente
           </button>
         </div>
+
+        {/* Sub-recipes section (only if there are available sub-recipes) */}
+        {subRecipes.length > 0 && (
+          <div>
+            <label style={labelStyle}>Sub-recetas</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              {subRecipeRows.map((row) => {
+                const sub = getSubRecipe(row.recipeId);
+                const qNum = parseFloat(row.quantity);
+                let rowCost: number | null = null;
+                if (sub && qNum > 0) {
+                  if (sub.sellUnit === 'kg' && sub.yieldGrams > 0) {
+                    rowCost = (sub.cost / sub.yieldGrams) * qNum;
+                  } else {
+                    rowCost = (sub.cost / (sub.yieldUnits || 1)) * qNum;
+                  }
+                }
+                const unitLabel = sub ? (sub.sellUnit === 'kg' ? 'g' : 'u.') : 'u.';
+                return (
+                  <div key={row.id} style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+                    <SearchableSelect
+                      options={subRecipes.map((r) => ({ value: r._id, label: `${r.name} (${r.sellUnit === 'kg' ? 'kg' : 'x' + r.yieldUnits})` }))}
+                      value={row.recipeId}
+                      onChange={(val) => updateSubRecipeRow(row.id, 'recipeId', val)}
+                      placeholder="Sub-receta..."
+                      style={{ flex: 2 }}
+                    />
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <input
+                        type="number"
+                        value={row.quantity}
+                        onChange={(e) => updateSubRecipeRow(row.id, 'quantity', e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="1"
+                        style={{ ...inputStyle, width: '100%', paddingRight: '28px', boxSizing: 'border-box' }}
+                      />
+                      <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{unitLabel}</span>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', minWidth: '60px', textAlign: 'right' }}>
+                      {rowCost !== null ? fmt(rowCost) : ''}
+                    </span>
+                    <button onClick={() => removeSubRecipeRow(row.id)} style={iconBtnStyle}>
+                      <MdClose size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={addSubRecipeRow} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-sm)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--color-primary)', padding: 0, fontWeight: 600 }}>
+              <MdAdd size={18} /> Agregar sub-receta
+            </button>
+          </div>
+        )}
 
         {/* Profit rule */}
         <div>
@@ -229,6 +381,25 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
           </div>
         </div>
 
+        {/* Yield units (only for unidad) */}
+        {sellUnit === 'unidad' && (
+          <div>
+            <label style={labelStyle}>Rinde (unidades que produce la receta)</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                value={yieldUnits}
+                onChange={(e) => setYieldUnits(e.target.value)}
+                placeholder="1"
+                min="1"
+                step="1"
+                style={{ ...inputStyle, paddingRight: '28px' }}
+              />
+              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>u.</span>
+            </div>
+          </div>
+        )}
+
         {/* Yield grams (only for kg) */}
         {sellUnit === 'kg' && (
           <div>
@@ -248,7 +419,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
         )}
 
         {/* Preview */}
-        {validRows.length > 0 && profitRuleId && (
+        {hasItems && profitRuleId && (
           <div style={{ background: '#f8f4db', borderRadius: 'var(--radius-sm)', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               Costo de producción: <strong>{fmt(totalCost)}</strong>
@@ -258,9 +429,22 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
                 Margen aplicado: <strong>{selectedRule.name} ({selectedRule.marginPercentage}%)</strong>
               </span>
             )}
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {sellUnit === 'kg' ? `Precio por kg: ${fmt(sellingPrice)}` : `Precio de venta: ${fmt(sellingPrice)}`}
-            </span>
+            {sellUnit === 'kg' ? (
+              <>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Precio por 100g: {fmt(sellingPrice / 10)}
+                </span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  ({fmt(sellingPrice)}/kg)
+                </span>
+              </>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                {yieldU > 1
+                  ? `Precio por unidad (rinde ${yieldU}): ${fmt(sellingPrice)}`
+                  : `Precio de venta: ${fmt(sellingPrice)}`}
+              </span>
+            )}
           </div>
         )}
 
