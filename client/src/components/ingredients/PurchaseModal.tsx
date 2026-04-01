@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
+import { SearchableSelect } from '../common/SearchableSelect';
 import type { Ingredient, RegisterPurchasePayload } from '../../types/ingredient.types';
 
 interface PurchaseModalProps {
@@ -125,18 +126,12 @@ export function PurchaseModal({
           {mode === 'existing' ? 'Ingrediente' : 'Nombre'}
         </label>
         {mode === 'existing' ? (
-          <select
+          <SearchableSelect
+            options={existingIngredients.map((ing) => ({ value: ing._id, label: `${ing.name} (${ing.unit === 'unidad' ? 'u.' : 'kg'})` }))}
             value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">— Seleccioná un ingrediente —</option>
-            {existingIngredients.map((ing) => (
-              <option key={ing._id} value={ing._id}>
-                {ing.name} ({ing.unit === 'unidad' ? 'u.' : 'kg'})
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedId(val)}
+            placeholder="Buscar ingrediente..."
+          />
         ) : (
           <input
             type="text"

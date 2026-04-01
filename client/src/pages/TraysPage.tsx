@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MdAdd } from 'react-icons/md';
-import { RecipeCard } from '../components/recipes/RecipeCard';
-import { RecipeFormModal } from '../components/recipes/RecipeFormModal';
+import { TrayCard } from '../components/trays/TrayCard';
+import { TrayFormModal } from '../components/trays/TrayFormModal';
 import { SearchBar } from '../components/common/SearchBar';
 import { Pagination } from '../components/common/Pagination';
+import { traysService } from '../services/trays.service';
 import { recipesService } from '../services/recipes.service';
-import { ingredientsService } from '../services/ingredients.service';
 import { profitRulesService } from '../services/profit-rules.service';
-import type { Recipe, CreateRecipePayload, UpdateRecipePayload } from '../types/recipe.types';
-import type { Ingredient } from '../types/ingredient.types';
+import type { Tray, CreateTrayPayload, UpdateTrayPayload } from '../types/tray.types';
+import type { Recipe } from '../types/recipe.types';
 import type { ProfitRule } from '../types/profit-rule.types';
 
-export function RecipesPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+export function TraysPage() {
+  const [trays, setTrays] = useState<Tray[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -20,17 +20,16 @@ export function RecipesPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [profitRules, setProfitRules] = useState<ProfitRule[]>([]);
-  const [subRecipes, setSubRecipes] = useState<Recipe[]>([]);
 
   const limit = 10;
 
-  const fetchRecipes = useCallback(async () => {
+  const fetchTrays = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await recipesService.list({ page, limit, search: search || undefined });
-      setRecipes(res.data);
+      const res = await traysService.list({ page, limit, search: search || undefined });
+      setTrays(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
     } finally {
@@ -38,57 +37,47 @@ export function RecipesPage() {
     }
   }, [page, search]);
 
-  // Load supporting data once
   useEffect(() => {
     Promise.all([
-      ingredientsService.list({ limit: 200 }),
+      recipesService.list({ limit: 200 }),
       profitRulesService.list(),
-      recipesService.list({ isSubRecipe: true, limit: 200 }),
-    ]).then(([ingsRes, rules, subRes]) => {
-      setIngredients(ingsRes.data);
+    ]).then(([recipesRes, rules]) => {
+      setRecipes(recipesRes.data);
       setProfitRules(rules);
-      setSubRecipes(subRes.data);
     });
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(fetchRecipes, search ? 300 : 0);
+    const timer = setTimeout(fetchTrays, search ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [fetchRecipes, search]);
+  }, [fetchTrays, search]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
     setPage(1);
   };
 
-  const handleCreate = async (payload: CreateRecipePayload) => {
-    await recipesService.create(payload);
+  const handleCreate = async (payload: CreateTrayPayload) => {
+    await traysService.create(payload);
     setPage(1);
     setSearch('');
-    await fetchRecipes();
-    // Refresh sub-recipes list if the new recipe is a sub-recipe
-    if (payload.isSubRecipe) {
-      const subRes = await recipesService.list({ isSubRecipe: true, limit: 200 });
-      setSubRecipes(subRes.data);
-    }
+    await fetchTrays();
   };
 
-  const handleEdit = async (id: string, payload: UpdateRecipePayload) => {
-    const updated = await recipesService.update(id, payload);
-    setRecipes((prev) => prev.map((r) => (r._id === id ? updated : r)));
+  const handleEdit = async (id: string, payload: UpdateTrayPayload) => {
+    const updated = await traysService.update(id, payload);
+    setTrays((prev) => prev.map((t) => (t._id === id ? updated : t)));
   };
 
   const handleDelete = async (id: string) => {
-    const recipe = recipes.find((r) => r._id === id);
-    if (!recipe) return;
-    if (!window.confirm('¿Eliminar esta receta?')) return;
-    await recipesService.delete(id);
-    await fetchRecipes();
+    if (!window.confirm('¿Eliminar esta bandeja?')) return;
+    await traysService.delete(id);
+    await fetchTrays();
   };
 
   const handleUpdatePrice = async (id: string, price: number | null) => {
-    const updated = await recipesService.updatePrice(id, price);
-    setRecipes((prev) => prev.map((r) => (r._id === id ? updated : r)));
+    const updated = await traysService.updatePrice(id, price);
+    setTrays((prev) => prev.map((t) => (t._id === id ? updated : t)));
   };
 
   return (
@@ -109,9 +98,9 @@ export function RecipesPage() {
             margin: '0 0 var(--space-md)',
           }}
         >
-          Recetas
+          Bandejas
         </h1>
-        <SearchBar value={search} onChange={handleSearch} placeholder="Buscar receta..." />
+        <SearchBar value={search} onChange={handleSearch} placeholder="Buscar bandeja..." />
       </div>
 
       {/* Content */}
@@ -125,7 +114,7 @@ export function RecipesPage() {
               margin: '0 0 var(--space-md)',
             }}
           >
-            {total} {total === 1 ? 'receta' : 'recetas'}
+            {total} {total === 1 ? 'bandeja' : 'bandejas'}
             {search && ` para "${search}"`}
           </p>
         )}
@@ -134,7 +123,7 @@ export function RecipesPage() {
           <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
             Cargando...
           </div>
-        ) : recipes.length === 0 ? (
+        ) : trays.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
@@ -144,15 +133,15 @@ export function RecipesPage() {
             }}
           >
             {search
-              ? `No se encontraron recetas para "${search}"`
-              : 'Aún no hay recetas. Creá la primera con el botón de abajo.'}
+              ? `No se encontraron bandejas para "${search}"`
+              : 'Aún no hay bandejas. Creá la primera con el botón de abajo.'}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-            {recipes.map((recipe) => (
-              <RecipeCard
-                key={recipe._id}
-                recipe={recipe}
+            {trays.map((tray) => (
+              <TrayCard
+                key={tray._id}
+                tray={tray}
                 profitRules={profitRules}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -189,16 +178,15 @@ export function RecipesPage() {
         }}
       >
         <MdAdd size={20} />
-        Nueva Receta
+        Nueva Bandeja
       </button>
 
-      <RecipeFormModal
+      <TrayFormModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleCreate}
-        ingredients={ingredients}
+        recipes={recipes}
         profitRules={profitRules}
-        subRecipes={subRecipes}
       />
     </div>
   );

@@ -9,7 +9,11 @@ interface RecipeStockCardProps {
   onSell: (recipe: Recipe) => void;
 }
 
-export function RecipeStockCard({ recipe, onStockChange, onSell }: RecipeStockCardProps) {
+export function RecipeStockCard({
+  recipe,
+  onStockChange,
+  onSell,
+}: RecipeStockCardProps) {
   const [saving, setSaving] = useState(false);
 
   const fmt = (v: number) =>
@@ -30,10 +34,10 @@ export function RecipeStockCard({ recipe, onStockChange, onSell }: RecipeStockCa
     recipe.stock === 0
       ? 'var(--color-error)'
       : !isWeight && recipe.stock <= 3
-      ? 'var(--color-warning)'
-      : isWeight && recipe.stock <= 500
-      ? 'var(--color-warning)'
-      : 'var(--color-text-primary)';
+        ? 'var(--color-warning)'
+        : isWeight && recipe.stock <= 500
+          ? 'var(--color-warning)'
+          : 'var(--color-text-primary)';
 
   const formatStock = (s: number) => {
     if (!isWeight) return `${s}`;
@@ -77,12 +81,31 @@ export function RecipeStockCard({ recipe, onStockChange, onSell }: RecipeStockCa
             margin: 'var(--space-xs) 0 0',
           }}
         >
-          {isWeight ? `${fmt(recipe.sellingPrice)}/kg` : fmt(recipe.sellingPrice)}
+          {isWeight ? `${fmt(recipe.pricePer100g)}` : fmt(recipe.sellingPrice)}
         </p>
+        {isWeight && (
+          <p
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.7rem',
+              color: 'var(--color-text-secondary)',
+              margin: 0,
+            }}
+          >
+            {fmt(recipe.sellingPrice)}/kg
+          </p>
+        )}
       </div>
 
       {/* Stock editor */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '2px',
+        }}
+      >
         <span
           style={{
             fontFamily: 'var(--font-body)',
@@ -104,7 +127,13 @@ export function RecipeStockCard({ recipe, onStockChange, onSell }: RecipeStockCa
         >
           {formatStock(recipe.stock)}
         </span>
-        <StockEditor stock={recipe.stock} onChange={handleStockChange} disabled={saving} step={isWeight ? 100 : 1} unit={isWeight ? 'g' : 'u.'} />
+        <StockEditor
+          stock={recipe.stock}
+          onChange={handleStockChange}
+          disabled={saving}
+          step={isWeight ? 100 : 1}
+          unit={isWeight ? 'g' : 'u.'}
+        />
       </div>
 
       {/* Vender button */}
@@ -112,8 +141,14 @@ export function RecipeStockCard({ recipe, onStockChange, onSell }: RecipeStockCa
         onClick={() => onSell(recipe)}
         disabled={recipe.stock === 0}
         style={{
-          background: recipe.stock === 0 ? 'rgba(188, 108, 37, 0.25)' : 'var(--color-primary)',
-          color: recipe.stock === 0 ? 'rgba(188, 108, 37, 0.6)' : 'var(--color-on-primary)',
+          background:
+            recipe.stock === 0
+              ? 'rgba(188, 108, 37, 0.25)'
+              : 'var(--color-primary)',
+          color:
+            recipe.stock === 0
+              ? 'rgba(188, 108, 37, 0.6)'
+              : 'var(--color-on-primary)',
           border: 'none',
           borderRadius: 'var(--radius-sm)',
           padding: 'var(--space-sm) var(--space-md)',

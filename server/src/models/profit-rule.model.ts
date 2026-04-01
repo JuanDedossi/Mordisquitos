@@ -18,5 +18,5 @@ const ProfitRuleSchema = new Schema<ProfitRuleDocument>(
 );
 
 export const ProfitRule =
-  mongoose.models.ProfitRule ||
+  (mongoose.models.ProfitRule as mongoose.Model<ProfitRuleDocument>) ||
   mongoose.model<ProfitRuleDocument>('ProfitRule', ProfitRuleSchema);

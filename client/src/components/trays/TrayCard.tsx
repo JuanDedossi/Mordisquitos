@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { MdEdit, MdDelete, MdExpandMore, MdExpandLess, MdCheck, MdClose, MdAttachMoney } from 'react-icons/md';
-import type { Recipe, UpdateRecipePayload } from '../../types/recipe.types';
+import type { Tray, UpdateTrayPayload } from '../../types/tray.types';
 import type { ProfitRule } from '../../types/profit-rule.types';
 
-interface RecipeCardProps {
-  recipe: Recipe;
+interface TrayCardProps {
+  tray: Tray;
   profitRules: ProfitRule[];
-  onEdit: (id: string, payload: UpdateRecipePayload) => Promise<void>;
+  onEdit: (id: string, payload: UpdateTrayPayload) => Promise<void>;
   onDelete: (id: string) => void;
   onUpdatePrice: (id: string, price: number | null) => Promise<void>;
 }
 
-export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePrice }: RecipeCardProps) {
+export function TrayCard({ tray, profitRules, onEdit, onDelete, onUpdatePrice }: TrayCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [editName, setEditName] = useState(recipe.name);
-  const [editRuleId, setEditRuleId] = useState(recipe.profitRuleId);
+  const [editName, setEditName] = useState(tray.name);
+  const [editRuleId, setEditRuleId] = useState(tray.profitRuleId);
   const [editingPrice, setEditingPrice] = useState(false);
   const [editPrice, setEditPrice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,13 +24,13 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
     `$${v.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const handleSave = async () => {
-    const payload: UpdateRecipePayload = {};
-    if (editName.trim() !== recipe.name) payload.name = editName.trim();
-    if (editRuleId !== recipe.profitRuleId) payload.profitRuleId = editRuleId;
+    const payload: UpdateTrayPayload = {};
+    if (editName.trim() !== tray.name) payload.name = editName.trim();
+    if (editRuleId !== tray.profitRuleId) payload.profitRuleId = editRuleId;
     if (Object.keys(payload).length === 0) { setEditingName(false); return; }
     setLoading(true);
     try {
-      await onEdit(recipe._id, payload);
+      await onEdit(tray._id, payload);
       setEditingName(false);
     } finally {
       setLoading(false);
@@ -38,13 +38,13 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
   };
 
   const handleCancel = () => {
-    setEditName(recipe.name);
-    setEditRuleId(recipe.profitRuleId);
+    setEditName(tray.name);
+    setEditRuleId(tray.profitRuleId);
     setEditingName(false);
   };
 
   const handlePriceEdit = () => {
-    setEditPrice(recipe.sellingPrice.toFixed(2));
+    setEditPrice(tray.sellingPrice.toFixed(2));
     setEditingPrice(true);
   };
 
@@ -53,7 +53,7 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
     if (isNaN(val) || val <= 0) return;
     setLoading(true);
     try {
-      await onUpdatePrice(recipe._id, val);
+      await onUpdatePrice(tray._id, val);
       setEditingPrice(false);
     } finally {
       setLoading(false);
@@ -63,15 +63,11 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
   const handlePriceReset = async () => {
     setLoading(true);
     try {
-      await onUpdatePrice(recipe._id, null);
+      await onUpdatePrice(tray._id, null);
       setEditingPrice(false);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handlePriceCancel = () => {
-    setEditingPrice(false);
   };
 
   return (
@@ -132,28 +128,11 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {recipe.name}
+                  {tray.name}
                 </span>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 'var(--space-xs) 0 0' }}>
-                  {recipe.profitRuleName} · {recipe.marginPercentage}% margen
+                  {tray.profitRuleName} · {tray.marginPercentage}% margen · {tray.recipes.length} {tray.recipes.length === 1 ? 'receta' : 'recetas'}
                 </p>
-                {recipe.isSubRecipe && (
-                  <span style={{
-                    display: 'inline-block',
-                    marginTop: 'var(--space-xs)',
-                    padding: '2px var(--space-xs)',
-                    background: 'rgba(188, 108, 37, 0.12)',
-                    borderRadius: 'var(--radius-sm)',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
-                    color: 'var(--color-primary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}>
-                    Sub-receta
-                  </span>
-                )}
               </div>
               <div style={{ textAlign: 'right', marginLeft: 'var(--space-md)' }}>
                 {editingPrice ? (
@@ -167,25 +146,20 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
                       min="0"
                       step="0.01"
                       style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, width: '80px', border: 'none', borderBottom: '2px solid var(--color-primary)', outline: 'none', background: 'transparent', color: 'var(--color-primary)', textAlign: 'right' }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handlePriceSave(); if (e.key === 'Escape') handlePriceCancel(); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handlePriceSave(); if (e.key === 'Escape') setEditingPrice(false); }}
                     />
                     <button onClick={handlePriceSave} disabled={loading} style={{ ...iconBtnStyle, color: 'var(--color-success)' }}><MdCheck size={16} /></button>
-                    <button onClick={handlePriceCancel} disabled={loading} style={iconBtnStyle}><MdClose size={16} /></button>
+                    <button onClick={() => setEditingPrice(false)} disabled={loading} style={iconBtnStyle}><MdClose size={16} /></button>
                   </div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
-                        {recipe.sellUnit === 'kg' ? `${fmt(recipe.pricePer100g)}` : fmt(recipe.sellingPrice)}
+                        {fmt(tray.sellingPrice)}
                       </span>
                       <button onClick={handlePriceEdit} style={{ ...iconBtnStyle, padding: '2px' }} title="Editar precio"><MdAttachMoney size={14} /></button>
                     </div>
-                    {recipe.sellUnit === 'kg' && (
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', display: 'block' }}>
-                        {fmt(recipe.sellingPrice)}/kg
-                      </span>
-                    )}
-                    {recipe.customSellingPrice !== null && (
+                    {tray.customSellingPrice !== null && (
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.65rem', color: 'var(--color-warning)', whiteSpace: 'nowrap', display: 'block', cursor: 'pointer' }} onClick={handlePriceReset} title="Precio manual — click para resetear">
                         precio manual ↺
                       </span>
@@ -202,7 +176,7 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
                 <button onClick={() => setExpanded((v) => !v)} style={iconBtnStyle} title="Ver detalle">
                   {expanded ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
                 </button>
-                <button onClick={() => onDelete(recipe._id)} style={{ ...iconBtnStyle, color: 'var(--color-error)' }} title="Eliminar"><MdDelete size={18} /></button>
+                <button onClick={() => onDelete(tray._id)} style={{ ...iconBtnStyle, color: 'var(--color-error)' }} title="Eliminar"><MdDelete size={18} /></button>
               </div>
             </div>
           </>
@@ -213,59 +187,36 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
       {expanded && !editingName && (
         <div style={{ borderTop: '1px solid rgba(218, 193, 184, 0.2)', padding: 'var(--space-md) var(--space-lg)', background: '#f8f4db' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 var(--space-sm)' }}>
-            Ingredientes
+            Recetas
           </p>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Ingrediente', 'Cantidad', 'Costo'].map((h) => (
+                {['Receta', 'Cantidad', 'Costo'].map((h) => (
                   <th key={h} style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'var(--color-text-secondary)', textAlign: 'left', paddingBottom: 'var(--space-xs)', fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {recipe.ingredients.map((ing) => (
-                <tr key={ing.ingredientId}>
-                  <td style={tdStyle}>
-                    {ing.isSubRecipe && (
-                      <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-primary)', marginRight: '4px', textTransform: 'uppercase' }}>SR</span>
-                    )}
-                    {ing.ingredientName}
-                  </td>
-                  <td style={tdStyle}>{ing.quantity}{ing.ingredientUnit === 'unidad' ? ' u.' : 'g'}</td>
-                  <td style={tdStyle}>{fmt(ing.cost)}</td>
+              {tray.recipes.map((r) => (
+                <tr key={r.recipeId}>
+                  <td style={tdStyle}>{r.recipeName}</td>
+                  <td style={tdStyle}>{r.quantity}{r.recipeSellUnit === 'kg' ? 'g' : ' u.'}</td>
+                  <td style={tdStyle}>{fmt(r.cost)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              Costo producción: <strong>{fmt(recipe.cost)}</strong>
+              Costo de producción: <strong>{fmt(tray.cost)}</strong>
             </span>
-            {recipe.sellUnit === 'unidad' && recipe.yieldUnits > 1 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                Rendimiento: <strong>{recipe.yieldUnits} unidades</strong>
-              </span>
-            )}
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              Margen ({recipe.marginPercentage}%): <strong>{fmt(recipe.sellingPrice - recipe.cost)}</strong>
+              Margen ({tray.marginPercentage}%): <strong>{fmt(tray.sellingPrice - tray.cost)}</strong>
             </span>
-            {recipe.sellUnit === 'kg' ? (
-              <>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                  Precio por 100g: {fmt(recipe.pricePer100g)}
-                </span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                  ({fmt(recipe.sellingPrice)}/kg)
-                </span>
-              </>
-            ) : (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                {recipe.yieldUnits > 1
-                  ? `Precio por unidad (rinde ${recipe.yieldUnits}): ${fmt(recipe.sellingPrice)}`
-                  : `Precio de venta: ${fmt(recipe.sellingPrice)}`}
-              </span>
-            )}
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+              Precio de venta: {fmt(tray.sellingPrice)}
+            </span>
           </div>
         </div>
       )}
