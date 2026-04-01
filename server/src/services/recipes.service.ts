@@ -20,6 +20,7 @@ export interface EnrichedRecipe {
   sellingPrice: number;
   sellUnit: string;
   yieldGrams: number;
+  yieldUnits: number;
   pricePerKg: number;
   stock: number;
   isActive: boolean;
@@ -33,6 +34,7 @@ export interface CreateRecipeInput {
   profitRuleId: string;
   sellUnit?: string;
   yieldGrams?: number;
+  yieldUnits?: number;
 }
 
 export interface UpdateRecipeInput {
@@ -41,6 +43,7 @@ export interface UpdateRecipeInput {
   profitRuleId?: string;
   sellUnit?: string;
   yieldGrams?: number;
+  yieldUnits?: number;
 }
 
 export interface UpdateStockInput {
@@ -105,6 +108,7 @@ async function enrichRecipes(
     const margin = rule?.marginPercentage ?? 0;
     const sellUnit = recipe.sellUnit ?? 'unidad';
     const yieldGrams = recipe.yieldGrams ?? 0;
+    const yieldUnits = (recipe as any).yieldUnits ?? 1;
 
     let sellingPrice: number;
     let pricePerKg = 0;
@@ -114,7 +118,7 @@ async function enrichRecipes(
       pricePerKg = costPerKg * (1 + margin / 100);
       sellingPrice = pricePerKg;
     } else {
-      sellingPrice = totalCost * (1 + margin / 100);
+      sellingPrice = (totalCost * (1 + margin / 100)) / yieldUnits;
     }
 
     const obj = (recipe as any).toObject();
@@ -128,6 +132,7 @@ async function enrichRecipes(
       sellingPrice,
       sellUnit,
       yieldGrams,
+      yieldUnits,
       pricePerKg,
     };
   });
@@ -198,6 +203,7 @@ export async function createRecipe(
     profitRuleId: new Types.ObjectId(dto.profitRuleId),
     sellUnit: dto.sellUnit ?? 'unidad',
     yieldGrams: dto.yieldGrams,
+    yieldUnits: dto.yieldUnits ?? 1,
   });
 
   return enrichRecipe(recipe as RecipeDocument);
@@ -246,6 +252,7 @@ export async function updateRecipe(
 
   if (dto.sellUnit !== undefined) updates.sellUnit = dto.sellUnit;
   if (dto.yieldGrams !== undefined) updates.yieldGrams = dto.yieldGrams;
+  if (dto.yieldUnits !== undefined) updates.yieldUnits = dto.yieldUnits;
 
   const updated = await Recipe.findByIdAndUpdate(
     id,

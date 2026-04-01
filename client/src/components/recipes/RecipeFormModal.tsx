@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MdAdd, MdClose } from 'react-icons/md';
 import { Modal } from '../common/Modal';
+import { SearchableSelect } from '../common/SearchableSelect';
 import type { Ingredient } from '../../types/ingredient.types';
 import type { ProfitRule } from '../../types/profit-rule.types';
 import type { CreateRecipePayload } from '../../types/recipe.types';
@@ -27,6 +28,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
   const [profitRuleId, setProfitRuleId] = useState('');
   const [sellUnit, setSellUnit] = useState<'unidad' | 'kg'>('unidad');
   const [yieldGrams, setYieldGrams] = useState('');
+  const [yieldUnits, setYieldUnits] = useState('1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,6 +39,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
       setProfitRuleId(profitRules[0]?._id ?? '');
       setSellUnit('unidad');
       setYieldGrams('');
+      setYieldUnits('1');
       setError('');
     } else {
       setProfitRuleId(profitRules[0]?._id ?? '');
@@ -60,6 +63,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
 
   const selectedRule = getRule(profitRuleId);
   const yieldG = parseFloat(yieldGrams);
+  const yieldU = parseInt(yieldUnits) || 1;
 
   let sellingPrice = 0;
   if (selectedRule) {
@@ -67,7 +71,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
       const costPerKg = (totalCost / yieldG) * 1000;
       sellingPrice = costPerKg * (1 + selectedRule.marginPercentage / 100);
     } else {
-      sellingPrice = totalCost * (1 + selectedRule.marginPercentage / 100);
+      sellingPrice = (totalCost * (1 + selectedRule.marginPercentage / 100)) / yieldU;
     }
   }
 
@@ -109,6 +113,7 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
         profitRuleId,
         sellUnit,
         yieldGrams: sellUnit === 'kg' ? yieldG : undefined,
+        yieldUnits: sellUnit === 'unidad' ? yieldU : undefined,
       });
       onClose();
     } catch (e: unknown) {
@@ -148,16 +153,13 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
               const unitLabel = ing ? (ing.unit === 'unidad' ? 'u.' : 'g') : 'g';
               return (
                 <div key={row.id} style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
-                  <select
+                  <SearchableSelect
+                    options={ingredients.map((i) => ({ value: i._id, label: `${i.name} (${i.unit === 'unidad' ? 'u.' : 'kg'})` }))}
                     value={row.ingredientId}
-                    onChange={(e) => updateRow(row.id, 'ingredientId', e.target.value)}
-                    style={{ ...inputStyle, flex: 2, padding: 'var(--space-xs) var(--space-sm)' }}
-                  >
-                    <option value="">Ingrediente...</option>
-                    {ingredients.map((i) => (
-                      <option key={i._id} value={i._id}>{i.name} ({i.unit === 'unidad' ? 'u.' : 'kg'})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => updateRow(row.id, 'ingredientId', val)}
+                    placeholder="Ingrediente..."
+                    style={{ flex: 2 }}
+                  />
                   <div style={{ position: 'relative', flex: 1 }}>
                     <input
                       type="number"
@@ -229,6 +231,25 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
           </div>
         </div>
 
+        {/* Yield units (only for unidad) */}
+        {sellUnit === 'unidad' && (
+          <div>
+            <label style={labelStyle}>Rinde (unidades que produce la receta)</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                value={yieldUnits}
+                onChange={(e) => setYieldUnits(e.target.value)}
+                placeholder="1"
+                min="1"
+                step="1"
+                style={{ ...inputStyle, paddingRight: '28px' }}
+              />
+              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>u.</span>
+            </div>
+          </div>
+        )}
+
         {/* Yield grams (only for kg) */}
         {sellUnit === 'kg' && (
           <div>
@@ -259,7 +280,11 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit, ingredients, profit
               </span>
             )}
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {sellUnit === 'kg' ? `Precio por kg: ${fmt(sellingPrice)}` : `Precio de venta: ${fmt(sellingPrice)}`}
+              {sellUnit === 'kg'
+                ? `Precio por kg: ${fmt(sellingPrice)}`
+                : yieldU > 1
+                ? `Precio por unidad (rinde ${yieldU}): ${fmt(sellingPrice)}`
+                : `Precio de venta: ${fmt(sellingPrice)}`}
             </span>
           </div>
         )}

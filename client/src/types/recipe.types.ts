@@ -17,6 +17,7 @@ export interface Recipe {
   sellingPrice: number;
   sellUnit: string;
   yieldGrams: number;
+  yieldUnits: number;
   pricePerKg: number;
   stock: number;
   isActive: boolean;
@@ -30,6 +31,7 @@ export interface CreateRecipePayload {
   profitRuleId: string;
   sellUnit?: string;
   yieldGrams?: number;
+  yieldUnits?: number;
 }
 
 export interface UpdateRecipePayload {
@@ -38,4 +40,5 @@ export interface UpdateRecipePayload {
   profitRuleId?: string;
   sellUnit?: string;
   yieldGrams?: number;
+  yieldUnits?: number;
 }

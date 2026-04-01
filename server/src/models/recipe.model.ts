@@ -11,6 +11,7 @@ export interface IRecipe {
   profitRuleId: Types.ObjectId;
   sellUnit: string;
   yieldGrams: number;
+  yieldUnits: number;
   stock: number;
   isActive: boolean;
 }
@@ -45,6 +46,7 @@ const RecipeSchema = new Schema<RecipeDocument>(
       enum: ['unidad', 'kg'],
     },
     yieldGrams: { type: Number, min: 0 },
+    yieldUnits: { type: Number, min: 1, default: 1 },
     stock: { type: Number, required: true, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
   },

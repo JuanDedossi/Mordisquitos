@@ -151,11 +151,20 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete }: RecipeCard
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               Costo producción: <strong>{fmt(recipe.cost)}</strong>
             </span>
+            {recipe.sellUnit === 'unidad' && recipe.yieldUnits > 1 && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                Rendimiento: <strong>{recipe.yieldUnits} unidades</strong>
+              </span>
+            )}
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               Margen ({recipe.marginPercentage}%): <strong>{fmt(recipe.sellingPrice - recipe.cost)}</strong>
             </span>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {recipe.sellUnit === 'kg' ? `Precio por kg: ${fmt(recipe.sellingPrice)}` : `Precio de venta: ${fmt(recipe.sellingPrice)}`}
+              {recipe.sellUnit === 'kg'
+                ? `Precio por kg: ${fmt(recipe.sellingPrice)}`
+                : recipe.yieldUnits > 1
+                ? `Precio por unidad (rinde ${recipe.yieldUnits}): ${fmt(recipe.sellingPrice)}`
+                : `Precio de venta: ${fmt(recipe.sellingPrice)}`}
             </span>
           </div>
         </div>
