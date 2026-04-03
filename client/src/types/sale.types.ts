@@ -1,5 +1,7 @@
 export interface SaleItem {
-  recipeId: string;
+  itemType?: 'recipe' | 'tray';
+  recipeId?: string;
+  trayId?: string;
   recipeName: string;
   quantity: number;
   unitPrice: number;
@@ -14,7 +16,7 @@ export interface Sale {
 }
 
 export interface CreateSalePayload {
-  items: { recipeId: string; quantity: number }[];
+  items: { recipeId?: string; trayId?: string; quantity: number }[];
 }
 
 export interface SaleStats {

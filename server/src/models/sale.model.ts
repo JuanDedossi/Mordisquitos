@@ -1,7 +1,9 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ISaleItem {
-  recipeId: Types.ObjectId;
+  itemType: 'recipe' | 'tray';
+  recipeId?: Types.ObjectId;
+  trayId?: Types.ObjectId;
   recipeName: string;
   quantity: number;
   unitPrice: number;
@@ -17,10 +19,20 @@ export type SaleDocument = ISale & Document;
 
 const SaleItemSchema = new Schema(
   {
+    itemType: {
+      type: String,
+      enum: ['recipe', 'tray'],
+      default: 'recipe',
+    },
     recipeId: {
       type: Schema.Types.ObjectId,
       ref: 'Recipe',
-      required: true,
+      required: false,
+    },
+    trayId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tray',
+      required: false,
     },
     recipeName: { type: String, required: true },
     quantity: { type: Number, required: true, min: 0 },

@@ -5,6 +5,7 @@ import {
   createTray,
   updateTray,
   updateTrayPrice,
+  updateTrayStock,
   deleteTray,
 } from '../services/trays.service';
 
@@ -15,8 +16,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, parseInt(req.query.limit as string, 10) || 10);
     const search = req.query.search as string | undefined;
+    const sortByStock = req.query.sortByStock === 'true';
+    const hasStock = req.query.hasStock === 'true' ? true : undefined;
 
-    const { data, total } = await findAllTrays(page, limit, search);
+    const { data, total } = await findAllTrays(page, limit, search, sortByStock, hasStock);
     res.json({
       success: true,
       data,
@@ -62,6 +65,16 @@ router.patch('/:id/price', async (req: Request, res: Response, next: NextFunctio
   try {
     const id = req.params.id as string;
     const data = await updateTrayPrice(id, req.body);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id/stock', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const data = await updateTrayStock(id, req.body);
     res.json({ success: true, data });
   } catch (err) {
     next(err);

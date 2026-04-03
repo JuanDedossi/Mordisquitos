@@ -10,6 +10,7 @@ export interface ITray {
   recipes: ITrayRecipe[];
   profitRuleId: Types.ObjectId;
   customSellingPrice: number | null;
+  stock: number;
   isActive: boolean;
 }
 
@@ -37,6 +38,7 @@ const TraySchema = new Schema<TrayDocument>(
       required: true,
     },
     customSellingPrice: { type: Number, default: null },
+    stock: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

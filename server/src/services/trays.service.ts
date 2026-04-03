@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, PipelineStage } from 'mongoose';
 import { Tray, TrayDocument } from '../models/tray.model';
 import { Recipe } from '../models/recipe.model';
 import { findProfitRuleById } from './profit-rules.service';
@@ -24,6 +24,7 @@ export interface EnrichedTray {
   marginPercentage: number;
   sellingPrice: number;
   customSellingPrice: number | null;
+  stock: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -110,20 +111,37 @@ export async function findAllTrays(
   page = 1,
   limit = 10,
   search?: string,
+  sortByStock = false,
+  hasStock?: boolean,
 ): Promise<{ data: EnrichedTray[]; total: number }> {
-  const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+  const query: Record<string, unknown> = search ? { name: { $regex: search, $options: 'i' } } : {};
+  if (hasStock) query.stock = { $gt: 0 };
 
-  const [rawData, total] = await Promise.all([
-    Tray.find(query)
+  const total = await Tray.countDocuments(query);
+
+  let rawData: TrayDocument[];
+
+  if (sortByStock) {
+    const pipeline: PipelineStage[] = [
+      { $match: query },
+      { $addFields: { _hasStock: { $cond: [{ $gt: ['$stock', 0] }, 0, 1] } } },
+      { $sort: { _hasStock: 1, name: 1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      { $project: { _hasStock: 0 } },
+    ];
+    const aggResult = await Tray.aggregate(pipeline);
+    rawData = aggResult.map((d) => Tray.hydrate(d)) as TrayDocument[];
+  } else {
+    rawData = (await Tray.find(query)
       .sort({ name: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .exec(),
-    Tray.countDocuments(query),
-  ]);
+      .exec()) as TrayDocument[];
+  }
 
   const data = await Promise.all(
-    (rawData as TrayDocument[]).map((t) => enrichTrayDoc(t)),
+    rawData.map((t) => enrichTrayDoc(t)),
   );
   return { data, total };
 }
@@ -226,6 +244,19 @@ export async function updateTrayPrice(
   const updated = await Tray.findByIdAndUpdate(
     id,
     { $set: { customSellingPrice: dto.customSellingPrice } },
+    { new: true },
+  ).exec();
+  if (!updated) throw { status: 404, message: 'Bandeja no encontrada' };
+  return enrichTrayDoc(updated as TrayDocument);
+}
+
+export async function updateTrayStock(
+  id: string,
+  dto: { stock: number },
+): Promise<EnrichedTray> {
+  const updated = await Tray.findByIdAndUpdate(
+    id,
+    { $set: { stock: Math.max(0, dto.stock) } },
     { new: true },
   ).exec();
   if (!updated) throw { status: 404, message: 'Bandeja no encontrada' };

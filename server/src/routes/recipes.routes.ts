@@ -23,8 +23,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         : req.query.isSubRecipe === 'false'
           ? false
           : undefined;
+    const sortByStock = req.query.sortByStock === 'true';
+    const hasStock = req.query.hasStock === 'true' ? true : undefined;
 
-    const { data, total } = await findAllRecipes(page, limit, search, isSubRecipe);
+    const { data, total } = await findAllRecipes(page, limit, search, isSubRecipe, sortByStock, hasStock);
     res.json({
       success: true,
       data,

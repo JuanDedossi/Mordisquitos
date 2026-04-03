@@ -10,7 +10,7 @@ export interface TraysListResponse {
 }
 
 export const traysService = {
-  async list(params: { page?: number; limit?: number; search?: string } = {}): Promise<TraysListResponse> {
+  async list(params: { page?: number; limit?: number; search?: string; sortByStock?: boolean; hasStock?: boolean } = {}): Promise<TraysListResponse> {
     const { data } = await api.get('/trays', { params });
     return data;
   },
@@ -32,6 +32,11 @@ export const traysService = {
 
   async updatePrice(id: string, customSellingPrice: number | null): Promise<Tray> {
     const { data } = await api.patch(`/trays/${id}/price`, { customSellingPrice });
+    return data.data;
+  },
+
+  async updateStock(id: string, stock: number): Promise<Tray> {
+    const { data } = await api.patch(`/trays/${id}/stock`, { stock });
     return data.data;
   },
 
