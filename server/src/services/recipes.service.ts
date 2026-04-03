@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, PipelineStage } from 'mongoose';
 import { Recipe, RecipeDocument } from '../models/recipe.model';
 import { findIngredientsByIds } from './ingredients.service';
 import { findProfitRuleById } from './profit-rules.service';
@@ -219,21 +219,38 @@ export async function findAllRecipes(
   limit = 10,
   search?: string,
   isSubRecipe?: boolean,
+  sortByStock = false,
+  hasStock?: boolean,
 ): Promise<{ data: EnrichedRecipe[]; total: number }> {
   const query: Record<string, unknown> = {};
   if (search) query.name = { $regex: search, $options: 'i' };
   if (isSubRecipe !== undefined) query.isSubRecipe = isSubRecipe;
+  if (hasStock) query.stock = { $gt: 0 };
 
-  const [rawData, total] = await Promise.all([
-    Recipe.find(query)
+  const total = await Recipe.countDocuments(query);
+
+  let rawData: RecipeDocument[];
+
+  if (sortByStock) {
+    const pipeline: PipelineStage[] = [
+      { $match: query },
+      { $addFields: { _hasStock: { $cond: [{ $gt: ['$stock', 0] }, 0, 1] } } },
+      { $sort: { _hasStock: 1, name: 1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      { $project: { _hasStock: 0 } },
+    ];
+    const aggResult = await Recipe.aggregate(pipeline);
+    rawData = aggResult.map((d) => Recipe.hydrate(d)) as RecipeDocument[];
+  } else {
+    rawData = (await Recipe.find(query)
       .sort({ name: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .exec(),
-    Recipe.countDocuments(query),
-  ]);
+      .exec()) as RecipeDocument[];
+  }
 
-  const data = await enrichRecipes(rawData as RecipeDocument[]);
+  const data = await enrichRecipes(rawData);
   return { data, total };
 }
 

@@ -18,6 +18,7 @@ export interface Tray {
   marginPercentage: number;
   sellingPrice: number;
   customSellingPrice: number | null;
+  stock: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

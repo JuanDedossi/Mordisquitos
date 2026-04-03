@@ -1,11 +1,25 @@
 import { useState, useEffect } from 'react';
 import { MdAdd, MdRemove } from 'react-icons/md';
 import { Modal } from '../common/Modal';
+import { recipesService } from '../../services/recipes.service';
+import { traysService } from '../../services/trays.service';
 import type { Recipe } from '../../types/recipe.types';
+import type { Tray } from '../../types/tray.types';
 import type { CreateSalePayload } from '../../types/sale.types';
 
+interface SellableItem {
+  id: string;
+  type: 'recipe' | 'tray';
+  name: string;
+  sellUnit: string;
+  price: number;
+  pricePerKg: number;
+  stock: number;
+}
+
 interface SaleItemState {
-  recipeId: string;
+  id: string;
+  itemType: 'recipe' | 'tray';
   quantity: number;
   weightInput: string;
   selected: boolean;
@@ -15,45 +29,95 @@ interface SaleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payload: CreateSalePayload) => Promise<void>;
-  recipes: Recipe[];
   preSelectedId?: string;
+  preSelectedType?: 'recipe' | 'tray';
 }
 
-export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }: SaleModalProps) {
+function buildSellableItems(recipes: Recipe[], trays: Tray[]): SellableItem[] {
+  const recipeItems: SellableItem[] = recipes.map((r) => ({
+    id: r._id,
+    type: 'recipe' as const,
+    name: r.name,
+    sellUnit: r.sellUnit,
+    price: r.sellingPrice,
+    pricePerKg: r.pricePerKg,
+    stock: r.stock,
+  }));
+  const trayItems: SellableItem[] = trays.map((t) => ({
+    id: t._id,
+    type: 'tray' as const,
+    name: t.name,
+    sellUnit: 'unidad',
+    price: t.sellingPrice,
+    pricePerKg: 0,
+    stock: t.stock,
+  }));
+  return [...recipeItems, ...trayItems];
+}
+
+export function SaleModal({ isOpen, onClose, onSubmit, preSelectedId, preSelectedType }: SaleModalProps) {
+  const [sellableItems, setSellableItems] = useState<SellableItem[]>([]);
   const [items, setItems] = useState<SaleItemState[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [error, setError] = useState('');
-
-  const availableRecipes = recipes.filter((r) => r.stock > 0);
 
   useEffect(() => {
     if (!isOpen) {
       setError('');
+      setSellableItems([]);
+      setItems([]);
       return;
     }
-    setItems(
-      availableRecipes.map((r) => ({
-        recipeId: r._id,
-        quantity: r.sellUnit === 'kg' ? 0 : 1,
-        weightInput: '',
-        selected: r._id === preSelectedId,
-      })),
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, preSelectedId]);
+
+    let cancelled = false;
+
+    async function fetchItems() {
+      setFetching(true);
+      try {
+        const [recipesRes, traysRes] = await Promise.all([
+          recipesService.list({ limit: 500, hasStock: true }),
+          traysService.list({ limit: 500, hasStock: true }),
+        ]);
+        if (cancelled) return;
+
+        const allItems = buildSellableItems(recipesRes.data, traysRes.data);
+        setSellableItems(allItems);
+        setItems(
+          allItems.map((item) => ({
+            id: item.id,
+            itemType: item.type,
+            quantity: item.sellUnit === 'kg' ? 0 : 1,
+            weightInput: '',
+            selected: item.id === preSelectedId && (preSelectedType ? item.type === preSelectedType : true),
+          })),
+        );
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    }
+
+    void fetchItems();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, preSelectedId, preSelectedType]);
+
+  const getItem = (id: string) => sellableItems.find((i) => i.id === id);
 
   const toggleSelect = (id: string) => {
     setItems((prev) =>
-      prev.map((item) => (item.recipeId === id ? { ...item, selected: !item.selected } : item)),
+      prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item)),
     );
   };
 
   const changeQuantity = (id: string, delta: number) => {
     setItems((prev) =>
       prev.map((item) => {
-        if (item.recipeId !== id) return item;
-        const recipe = recipes.find((r) => r._id === id);
-        const max = recipe?.stock ?? 1;
+        if (item.id !== id) return item;
+        const sellable = getItem(id);
+        const max = sellable?.stock ?? 1;
         const next = Math.max(1, Math.min(max, item.quantity + delta));
         return { ...item, quantity: next };
       }),
@@ -63,9 +127,9 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
   const changeWeight = (id: string, value: string) => {
     setItems((prev) =>
       prev.map((item) => {
-        if (item.recipeId !== id) return item;
-        const recipe = recipes.find((r) => r._id === id);
-        const max = recipe?.stock ?? 0;
+        if (item.id !== id) return item;
+        const sellable = getItem(id);
+        const max = sellable?.stock ?? 0;
         const parsed = parseFloat(value);
         const qty = isNaN(parsed) ? 0 : Math.min(parsed, max);
         return { ...item, weightInput: value, quantity: Math.max(0, qty) };
@@ -78,15 +142,13 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
   const fmt = (v: number) =>
     `$${v.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const getRecipe = (id: string) => recipes.find((r) => r._id === id);
-
   const total = selectedItems.reduce((sum, item) => {
-    const recipe = getRecipe(item.recipeId);
-    if (!recipe) return sum;
-    if (recipe.sellUnit === 'kg') {
-      return sum + (item.quantity / 1000) * recipe.pricePerKg;
+    const sellable = getItem(item.id);
+    if (!sellable) return sum;
+    if (sellable.sellUnit === 'kg') {
+      return sum + (item.quantity / 1000) * sellable.pricePerKg;
     }
-    return sum + recipe.sellingPrice * item.quantity;
+    return sum + sellable.price * item.quantity;
   }, 0);
 
   const isValid = selectedItems.length > 0;
@@ -96,9 +158,15 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
     setError('');
     setLoading(true);
     try {
-      await onSubmit({
-        items: selectedItems.map((i) => ({ recipeId: i.recipeId, quantity: i.quantity })),
-      });
+      const payload: CreateSalePayload = {
+        items: selectedItems.map((i) => {
+          if (i.itemType === 'tray') {
+            return { trayId: i.id, quantity: i.quantity };
+          }
+          return { recipeId: i.id, quantity: i.quantity };
+        }),
+      };
+      await onSubmit(payload);
       onClose();
     } catch (e: unknown) {
       const msg =
@@ -114,19 +182,23 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Registrar Venta">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-        {availableRecipes.length === 0 ? (
+        {fetching ? (
           <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-lg) 0' }}>
-            No hay recetas con stock disponible.
+            Cargando productos...
+          </p>
+        ) : sellableItems.length === 0 ? (
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-lg) 0' }}>
+            No hay productos con stock disponible.
           </p>
         ) : (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxHeight: '50vh', overflowY: 'auto' }}>
               {items.map((item) => {
-                const recipe = getRecipe(item.recipeId);
-                if (!recipe) return null;
+                const sellable = getItem(item.id);
+                if (!sellable) return null;
                 return (
                   <div
-                    key={item.recipeId}
+                    key={item.id}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -137,7 +209,7 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                       border: `1.5px solid ${item.selected ? 'rgba(188, 108, 37, 0.3)' : 'rgba(218, 193, 184, 0.25)'}`,
                       cursor: 'pointer',
                     }}
-                    onClick={() => toggleSelect(item.recipeId)}
+                    onClick={() => toggleSelect(item.id)}
                   >
                     {/* Checkbox */}
                     <div
@@ -160,19 +232,26 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                       )}
                     </div>
 
-                    {/* Recipe info */}
+                    {/* Item info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {recipe.name}
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sellable.name}
+                        </p>
+                        {sellable.type === 'tray' && (
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.6rem', color: 'var(--color-text-secondary)', background: 'rgba(218, 193, 184, 0.2)', padding: '1px 5px', borderRadius: 'var(--radius-sm)', flexShrink: 0 }}>
+                            Bandeja
+                          </span>
+                        )}
+                      </div>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-                        {recipe.sellUnit === 'kg' ? `${fmt(recipe.pricePerKg)}/kg` : fmt(recipe.sellingPrice)} · stock: {recipe.sellUnit === 'kg' ? (recipe.stock >= 1000 ? `${(recipe.stock / 1000).toFixed(1)}kg` : `${recipe.stock}g`) : recipe.stock}
+                        {sellable.sellUnit === 'kg' ? `${fmt(sellable.pricePerKg)}/kg` : fmt(sellable.price)} · stock: {sellable.sellUnit === 'kg' ? (sellable.stock >= 1000 ? `${(sellable.stock / 1000).toFixed(1)}kg` : `${sellable.stock}g`) : sellable.stock}
                       </p>
                     </div>
 
                     {/* Quantity stepper or weight input (only when selected) */}
                     {item.selected && (
-                      recipe.sellUnit === 'kg' ? (
+                      sellable.sellUnit === 'kg' ? (
                         <div
                           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}
                           onClick={(e) => e.stopPropagation()}
@@ -180,10 +259,10 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                           <input
                             type="number"
                             value={item.weightInput}
-                            onChange={(e) => changeWeight(item.recipeId, e.target.value)}
+                            onChange={(e) => changeWeight(item.id, e.target.value)}
                             placeholder="g"
                             min="0"
-                            max={recipe.stock}
+                            max={sellable.stock}
                             style={{
                               width: 60,
                               fontFamily: 'var(--font-body)',
@@ -205,7 +284,7 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
-                            onClick={() => changeQuantity(item.recipeId, -1)}
+                            onClick={() => changeQuantity(item.id, -1)}
                             disabled={item.quantity <= 1}
                             style={stepperBtn}
                           >
@@ -215,8 +294,8 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => changeQuantity(item.recipeId, 1)}
-                            disabled={item.quantity >= recipe.stock}
+                            onClick={() => changeQuantity(item.id, 1)}
+                            disabled={item.quantity >= sellable.stock}
                             style={stepperBtn}
                           >
                             <MdAdd size={14} />
@@ -228,7 +307,7 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
                     {/* Subtotal */}
                     {item.selected && item.quantity > 0 && (
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>
-                        {fmt(recipe.sellUnit === 'kg' ? (item.quantity / 1000) * recipe.pricePerKg : recipe.sellingPrice * item.quantity)}
+                        {fmt(sellable.sellUnit === 'kg' ? (item.quantity / 1000) * sellable.pricePerKg : sellable.price * item.quantity)}
                       </span>
                     )}
                   </div>
@@ -240,15 +319,16 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
             {selectedItems.length > 0 && (
               <div style={{ background: 'var(--color-surface-container-low)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {selectedItems.map((item) => {
-                  const recipe = getRecipe(item.recipeId);
-                  if (!recipe) return null;
+                  const sellable = getItem(item.id);
+                  if (!sellable) return null;
                   return (
-                    <div key={item.recipeId} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                        {recipe.sellUnit === 'kg' ? `${item.quantity}g` : `${item.quantity}×`} {recipe.name}
+                        {sellable.sellUnit === 'kg' ? `${item.quantity}g` : `${item.quantity}×`} {sellable.name}
+                        {sellable.type === 'tray' ? ' (B)' : ''}
                       </span>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                        {fmt(recipe.sellUnit === 'kg' ? (item.quantity / 1000) * recipe.pricePerKg : recipe.sellingPrice * item.quantity)}
+                        {fmt(sellable.sellUnit === 'kg' ? (item.quantity / 1000) * sellable.pricePerKg : sellable.price * item.quantity)}
                       </span>
                     </div>
                   );
@@ -274,8 +354,8 @@ export function SaleModal({ isOpen, onClose, onSubmit, recipes, preSelectedId }:
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!isValid || loading || availableRecipes.length === 0}
-            style={submitBtnStyle(!isValid || loading || availableRecipes.length === 0)}
+            disabled={!isValid || loading || fetching}
+            style={submitBtnStyle(!isValid || loading || fetching)}
           >
             {loading ? 'Registrando...' : 'Confirmar Venta'}
           </button>
