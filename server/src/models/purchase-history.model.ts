@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface IPurchaseHistory {
   ingredientId: Types.ObjectId;
@@ -34,9 +35,8 @@ const PurchaseHistorySchema = new Schema<PurchaseHistoryDocument>(
   { timestamps: true },
 );
 
-export const PurchaseHistory =
-  (mongoose.models.PurchaseHistory as mongoose.Model<PurchaseHistoryDocument>) ||
-  mongoose.model<PurchaseHistoryDocument>(
-    'PurchaseHistory',
-    PurchaseHistorySchema,
-  );
+export function getPurchaseHistoryModel(): mongoose.Model<PurchaseHistoryDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['PurchaseHistory'] as mongoose.Model<PurchaseHistoryDocument>) ??
+    db.model<PurchaseHistoryDocument>('PurchaseHistory', PurchaseHistorySchema);
+}

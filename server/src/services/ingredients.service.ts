@@ -1,9 +1,9 @@
 import {
-  Ingredient,
+  getIngredientModel,
   IngredientDocument,
 } from '../models/ingredient.model';
-import { PurchaseHistory } from '../models/purchase-history.model';
-import { Recipe } from '../models/recipe.model';
+import { getPurchaseHistoryModel } from '../models/purchase-history.model';
+import { getRecipeModel } from '../models/recipe.model';
 
 export interface RegisterPurchaseInput {
   ingredientName: string;
@@ -23,6 +23,7 @@ export async function findAllIngredients(
   limit = 10,
   search?: string,
 ): Promise<{ data: IngredientDocument[]; total: number }> {
+  const Ingredient = getIngredientModel();
   const query = search ? { name: { $regex: search, $options: 'i' } } : {};
 
   const [data, total] = await Promise.all([
@@ -40,6 +41,7 @@ export async function findAllIngredients(
 export async function findIngredientById(
   id: string,
 ): Promise<IngredientDocument> {
+  const Ingredient = getIngredientModel();
   const ingredient = await Ingredient.findById(id).exec();
   if (!ingredient) {
     throw { status: 404, message: 'Ingrediente no encontrado' };
@@ -50,6 +52,7 @@ export async function findIngredientById(
 export async function findIngredientsByIds(
   ids: string[],
 ): Promise<IngredientDocument[]> {
+  const Ingredient = getIngredientModel();
   const result = await Ingredient.find({ _id: { $in: ids } }).exec();
   return result as IngredientDocument[];
 }
@@ -57,6 +60,9 @@ export async function findIngredientsByIds(
 export async function registerPurchase(
   dto: RegisterPurchaseInput,
 ): Promise<IngredientDocument> {
+  const Ingredient = getIngredientModel();
+  const PurchaseHistory = getPurchaseHistoryModel();
+  const Recipe = getRecipeModel();
   const unit = dto.unit ?? 'kg';
   const isWeight = unit === 'kg';
 
@@ -137,6 +143,7 @@ export async function updateIngredient(
   id: string,
   dto: UpdateIngredientInput,
 ): Promise<IngredientDocument> {
+  const Ingredient = getIngredientModel();
   const existing = await Ingredient.findOne({
     name: { $regex: `^${dto.name}$`, $options: 'i' },
     _id: { $ne: id },
@@ -160,6 +167,7 @@ export async function updateIngredient(
 }
 
 export async function deleteIngredient(id: string): Promise<void> {
+  const Ingredient = getIngredientModel();
   const ingredient = await Ingredient.findById(id).exec();
   if (!ingredient) {
     throw { status: 404, message: 'Ingrediente no encontrado' };

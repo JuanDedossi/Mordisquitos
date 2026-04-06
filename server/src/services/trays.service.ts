@@ -1,6 +1,6 @@
 import { Types, PipelineStage } from 'mongoose';
-import { Tray, TrayDocument } from '../models/tray.model';
-import { Recipe } from '../models/recipe.model';
+import { getTrayModel, TrayDocument } from '../models/tray.model';
+import { getRecipeModel } from '../models/recipe.model';
 import { findProfitRuleById } from './profit-rules.service';
 import { findRecipeById } from './recipes.service';
 
@@ -114,6 +114,7 @@ export async function findAllTrays(
   sortByStock = false,
   hasStock?: boolean,
 ): Promise<{ data: EnrichedTray[]; total: number }> {
+  const Tray = getTrayModel();
   const query: Record<string, unknown> = search ? { name: { $regex: search, $options: 'i' } } : {};
   if (hasStock) query.stock = { $gt: 0 };
 
@@ -147,12 +148,15 @@ export async function findAllTrays(
 }
 
 export async function findTrayById(id: string): Promise<EnrichedTray> {
+  const Tray = getTrayModel();
   const tray = await Tray.findById(id).exec();
   if (!tray) throw { status: 404, message: 'Bandeja no encontrada' };
   return enrichTrayDoc(tray as TrayDocument);
 }
 
 export async function createTray(dto: CreateTrayInput): Promise<EnrichedTray> {
+  const Tray = getTrayModel();
+  const Recipe = getRecipeModel();
   const existing = await Tray.findOne({
     name: { $regex: `^${dto.name}$`, $options: 'i' },
   }).exec();
@@ -191,6 +195,8 @@ export async function updateTray(
   id: string,
   dto: UpdateTrayInput,
 ): Promise<EnrichedTray> {
+  const Tray = getTrayModel();
+  const Recipe = getRecipeModel();
   const tray = await Tray.findById(id).exec();
   if (!tray) throw { status: 404, message: 'Bandeja no encontrada' };
 
@@ -241,6 +247,7 @@ export async function updateTrayPrice(
   id: string,
   dto: UpdateTrayPriceInput,
 ): Promise<EnrichedTray> {
+  const Tray = getTrayModel();
   const updated = await Tray.findByIdAndUpdate(
     id,
     { $set: { customSellingPrice: dto.customSellingPrice } },
@@ -254,6 +261,7 @@ export async function updateTrayStock(
   id: string,
   dto: { stock: number },
 ): Promise<EnrichedTray> {
+  const Tray = getTrayModel();
   const updated = await Tray.findByIdAndUpdate(
     id,
     { $set: { stock: Math.max(0, dto.stock) } },
@@ -264,6 +272,7 @@ export async function updateTrayStock(
 }
 
 export async function deleteTray(id: string): Promise<void> {
+  const Tray = getTrayModel();
   const tray = await Tray.findById(id).exec();
   if (!tray) throw { status: 404, message: 'Bandeja no encontrada' };
   await Tray.findByIdAndDelete(id).exec();

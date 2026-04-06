@@ -1,5 +1,5 @@
 import { Types, PipelineStage } from 'mongoose';
-import { Recipe, RecipeDocument } from '../models/recipe.model';
+import { getRecipeModel, RecipeDocument } from '../models/recipe.model';
 import { findIngredientsByIds } from './ingredients.service';
 import { findProfitRuleById } from './profit-rules.service';
 
@@ -67,6 +67,7 @@ async function enrichRecipes(
   depth = 0,
 ): Promise<EnrichedRecipe[]> {
   if (recipes.length === 0) return [];
+  const Recipe = getRecipeModel();
 
   const ingredientIds = [
     ...new Set(
@@ -222,6 +223,7 @@ export async function findAllRecipes(
   sortByStock = false,
   hasStock?: boolean,
 ): Promise<{ data: EnrichedRecipe[]; total: number }> {
+  const Recipe = getRecipeModel();
   const query: Record<string, unknown> = {};
   if (search) query.name = { $regex: search, $options: 'i' };
   if (isSubRecipe !== undefined) query.isSubRecipe = isSubRecipe;
@@ -255,6 +257,7 @@ export async function findAllRecipes(
 }
 
 export async function findRecipeById(id: string): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const recipe = await Recipe.findById(id).exec();
   if (!recipe) {
     throw { status: 404, message: 'Receta no encontrada' };
@@ -265,6 +268,7 @@ export async function findRecipeById(id: string): Promise<EnrichedRecipe> {
 export async function createRecipe(
   dto: CreateRecipeInput,
 ): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const existing = await Recipe.findOne({
     name: { $regex: `^${dto.name}$`, $options: 'i' },
   }).exec();
@@ -313,6 +317,7 @@ export async function updateRecipe(
   id: string,
   dto: UpdateRecipeInput,
 ): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const recipe = await Recipe.findById(id).exec();
   if (!recipe) throw { status: 404, message: 'Receta no encontrada' };
 
@@ -385,6 +390,7 @@ export async function updateRecipePrice(
   id: string,
   dto: UpdateRecipePriceInput,
 ): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const updated = await Recipe.findByIdAndUpdate(
     id,
     { $set: { customSellingPrice: dto.customSellingPrice } },
@@ -398,6 +404,7 @@ export async function updateRecipeStock(
   id: string,
   dto: UpdateStockInput,
 ): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const updated = await Recipe.findByIdAndUpdate(
     id,
     { $set: { stock: dto.stock } },
@@ -408,6 +415,7 @@ export async function updateRecipeStock(
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
+  const Recipe = getRecipeModel();
   const recipe = await Recipe.findById(id).exec();
   if (!recipe) throw { status: 404, message: 'Receta no encontrada' };
   await Recipe.findByIdAndDelete(id).exec();
@@ -416,6 +424,7 @@ export async function deleteRecipe(id: string): Promise<void> {
 export async function toggleRecipeActive(
   id: string,
 ): Promise<EnrichedRecipe> {
+  const Recipe = getRecipeModel();
   const recipe = (await Recipe.findById(id).exec()) as RecipeDocument | null;
   if (!recipe) throw { status: 404, message: 'Receta no encontrada' };
   const updated = await Recipe.findByIdAndUpdate(

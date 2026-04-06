@@ -1,18 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { getTenants, TenantConfig } from '../config/tenants';
+import { runWithTenant } from './tenant-context';
 
 export function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  const secret = process.env.APP_SECRET;
+  const tenants = getTenants();
 
-  // Sin APP_SECRET configurado → dev mode, pasa todo
-  if (!secret) {
+  // Dev mode: sin auth configurado → pasa todo
+  if (tenants.length === 0) {
     next();
     return;
   }
@@ -24,22 +23,29 @@ export function authMiddleware(
     return;
   }
 
-  // Timing-safe comparison para prevenir timing attacks
-  try {
-    const secretBuf = Buffer.from(secret);
-    const tokenBuf = Buffer.from(token);
+  // Timing-safe comparison contra todos los tenants configurados
+  let matchedTenant: TenantConfig | null = null;
+  const tokenBuf = Buffer.from(token);
 
-    if (
-      secretBuf.length !== tokenBuf.length ||
-      !crypto.timingSafeEqual(secretBuf, tokenBuf)
-    ) {
-      res.status(401).json({ success: false, error: 'No autorizado' });
-      return;
+  for (const tenant of tenants) {
+    try {
+      const pinBuf = Buffer.from(tenant.pin);
+      if (
+        pinBuf.length === tokenBuf.length &&
+        crypto.timingSafeEqual(pinBuf, tokenBuf)
+      ) {
+        if (!matchedTenant) matchedTenant = tenant;
+      }
+    } catch {
+      // ignorar entradas inválidas
     }
-  } catch {
+  }
+
+  if (!matchedTenant) {
     res.status(401).json({ success: false, error: 'No autorizado' });
     return;
   }
 
-  next();
+  const tenant = matchedTenant;
+  runWithTenant({ dbName: tenant.dbName, label: tenant.label }, () => next());
 }

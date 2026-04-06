@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Sale, SaleDocument } from '../models/sale.model';
+import { getSaleModel, SaleDocument } from '../models/sale.model';
 import { findRecipeById, updateRecipeStock } from './recipes.service';
 import { findTrayById, updateTrayStock } from './trays.service';
 
@@ -10,14 +10,24 @@ export interface CreateSaleInput {
 export async function findAllSales(
   page = 1,
   limit = 20,
+  dateFrom?: Date,
+  dateTo?: Date,
 ): Promise<{ data: SaleDocument[]; total: number }> {
+  const Sale = getSaleModel();
+  const query: Record<string, unknown> = {};
+  if (dateFrom || dateTo) {
+    const range: Record<string, Date> = {};
+    if (dateFrom) range.$gte = dateFrom;
+    if (dateTo) range.$lte = dateTo;
+    query.createdAt = range;
+  }
   const [data, total] = await Promise.all([
-    Sale.find()
+    Sale.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .exec(),
-    Sale.countDocuments(),
+    Sale.countDocuments(query),
   ]);
   return { data: data as SaleDocument[], total };
 }
@@ -26,6 +36,7 @@ export async function getSaleStats(): Promise<{
   weekly: number;
   monthly: number;
 }> {
+  const Sale = getSaleModel();
   const now = new Date();
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -50,6 +61,7 @@ export async function getSaleStats(): Promise<{
 export async function createSale(
   dto: CreateSaleInput,
 ): Promise<SaleDocument> {
+  const Sale = getSaleModel();
   const recipeItems = dto.items.filter((i) => i.recipeId);
   const trayItems = dto.items.filter((i) => i.trayId);
 

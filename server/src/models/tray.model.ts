@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface ITrayRecipe {
   recipeId: Types.ObjectId;
@@ -44,6 +45,8 @@ const TraySchema = new Schema<TrayDocument>(
   { timestamps: true },
 );
 
-export const Tray =
-  (mongoose.models.Tray as mongoose.Model<TrayDocument>) ||
-  mongoose.model<TrayDocument>('Tray', TraySchema);
+export function getTrayModel(): mongoose.Model<TrayDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['Tray'] as mongoose.Model<TrayDocument>) ??
+    db.model<TrayDocument>('Tray', TraySchema);
+}

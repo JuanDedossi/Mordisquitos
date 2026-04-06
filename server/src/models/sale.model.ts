@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface ISaleItem {
   itemType: 'recipe' | 'tray';
@@ -50,6 +51,8 @@ const SaleSchema = new Schema<SaleDocument>(
   { timestamps: true },
 );
 
-export const Sale =
-  (mongoose.models.Sale as mongoose.Model<SaleDocument>) ||
-  mongoose.model<SaleDocument>('Sale', SaleSchema);
+export function getSaleModel(): mongoose.Model<SaleDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['Sale'] as mongoose.Model<SaleDocument>) ??
+    db.model<SaleDocument>('Sale', SaleSchema);
+}
