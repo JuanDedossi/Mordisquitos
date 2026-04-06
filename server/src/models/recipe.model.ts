@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface IRecipeIngredient {
   type: 'ingredient' | 'subRecipe';
@@ -69,6 +70,8 @@ const RecipeSchema = new Schema<RecipeDocument>(
   { timestamps: true },
 );
 
-export const Recipe =
-  (mongoose.models.Recipe as mongoose.Model<RecipeDocument>) ||
-  mongoose.model<RecipeDocument>('Recipe', RecipeSchema);
+export function getRecipeModel(): mongoose.Model<RecipeDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['Recipe'] as mongoose.Model<RecipeDocument>) ??
+    db.model<RecipeDocument>('Recipe', RecipeSchema);
+}

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const TOKEN_KEY = "mordisquitos-token";
+const TOKEN_KEY = 'mordisquitos-token';
+const USER_LABEL_KEY = 'mordisquitos-user';
 
 export function PinScreen() {
   const navigate = useNavigate();
@@ -23,7 +24,9 @@ export function PinScreen() {
       const res = await fetch(`/api/auth?pin=${encodeURIComponent(pin)}`);
 
       if (res.ok) {
+        const json = await res.json() as { status: string; user?: string };
         localStorage.setItem(TOKEN_KEY, pin);
+        if (json.user) localStorage.setItem(USER_LABEL_KEY, json.user);
         navigate(from, { replace: true });
       } else if (res.status === 401) {
         setError("PIN incorrecto. Probá de nuevo.");

@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface IIngredient {
   name: string;
@@ -28,6 +29,8 @@ const IngredientSchema = new Schema<IngredientDocument>(
 
 IngredientSchema.index({ name: 'text' });
 
-export const Ingredient =
-  (mongoose.models.Ingredient as mongoose.Model<IngredientDocument>) ||
-  mongoose.model<IngredientDocument>('Ingredient', IngredientSchema);
+export function getIngredientModel(): mongoose.Model<IngredientDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['Ingredient'] as mongoose.Model<IngredientDocument>) ??
+    db.model<IngredientDocument>('Ingredient', IngredientSchema);
+}

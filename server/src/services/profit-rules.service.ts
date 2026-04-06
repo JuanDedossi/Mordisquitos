@@ -1,5 +1,5 @@
 import {
-  ProfitRule,
+  getProfitRuleModel,
   ProfitRuleDocument,
 } from '../models/profit-rule.model';
 
@@ -16,6 +16,7 @@ export interface UpdateProfitRuleInput {
 }
 
 export async function findAllProfitRules(): Promise<ProfitRuleDocument[]> {
+  const ProfitRule = getProfitRuleModel();
   const result = await ProfitRule.find().sort({ name: 1 }).exec();
   return result as ProfitRuleDocument[];
 }
@@ -23,6 +24,7 @@ export async function findAllProfitRules(): Promise<ProfitRuleDocument[]> {
 export async function findProfitRuleById(
   id: string,
 ): Promise<ProfitRuleDocument> {
+  const ProfitRule = getProfitRuleModel();
   const rule = await ProfitRule.findById(id).exec();
   if (!rule) {
     throw { status: 404, message: 'Regla de ganancia no encontrada' };
@@ -33,6 +35,7 @@ export async function findProfitRuleById(
 export async function createProfitRule(
   dto: CreateProfitRuleInput,
 ): Promise<ProfitRuleDocument> {
+  const ProfitRule = getProfitRuleModel();
   const existing = await ProfitRule.findOne({
     name: { $regex: `^${dto.name}$`, $options: 'i' },
   }).exec();
@@ -50,6 +53,7 @@ export async function updateProfitRule(
   id: string,
   dto: UpdateProfitRuleInput,
 ): Promise<ProfitRuleDocument> {
+  const ProfitRule = getProfitRuleModel();
   const rule = await findProfitRuleById(id);
 
   if (dto.name && dto.name !== rule.name) {
@@ -77,6 +81,7 @@ export async function updateProfitRule(
 }
 
 export async function deleteProfitRule(id: string): Promise<void> {
+  const ProfitRule = getProfitRuleModel();
   await findProfitRuleById(id);
   await ProfitRule.findByIdAndDelete(id).exec();
 }

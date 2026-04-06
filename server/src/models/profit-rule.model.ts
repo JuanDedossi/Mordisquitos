@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { getTenantDb } from '../middleware/tenant-context';
 
 export interface IProfitRule {
   name: string;
@@ -17,6 +18,8 @@ const ProfitRuleSchema = new Schema<ProfitRuleDocument>(
   { timestamps: true },
 );
 
-export const ProfitRule =
-  (mongoose.models.ProfitRule as mongoose.Model<ProfitRuleDocument>) ||
-  mongoose.model<ProfitRuleDocument>('ProfitRule', ProfitRuleSchema);
+export function getProfitRuleModel(): mongoose.Model<ProfitRuleDocument> {
+  const db = mongoose.connection.useDb(getTenantDb(), { useCache: true });
+  return (db.models['ProfitRule'] as mongoose.Model<ProfitRuleDocument>) ??
+    db.model<ProfitRuleDocument>('ProfitRule', ProfitRuleSchema);
+}
