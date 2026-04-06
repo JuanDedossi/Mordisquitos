@@ -10,7 +10,7 @@ export interface SalesListResponse {
 }
 
 export const salesService = {
-  async list(params: { page?: number; limit?: number } = {}): Promise<SalesListResponse> {
+  async list(params: { page?: number; limit?: number; dateFrom?: string; dateTo?: string } = {}): Promise<SalesListResponse> {
     const { data } = await api.get('/sales', { params });
     return data;
   },

@@ -10,15 +10,24 @@ export interface CreateSaleInput {
 export async function findAllSales(
   page = 1,
   limit = 20,
+  dateFrom?: Date,
+  dateTo?: Date,
 ): Promise<{ data: SaleDocument[]; total: number }> {
   const Sale = getSaleModel();
+  const query: Record<string, unknown> = {};
+  if (dateFrom || dateTo) {
+    const range: Record<string, Date> = {};
+    if (dateFrom) range.$gte = dateFrom;
+    if (dateTo) range.$lte = dateTo;
+    query.createdAt = range;
+  }
   const [data, total] = await Promise.all([
-    Sale.find()
+    Sale.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .exec(),
-    Sale.countDocuments(),
+    Sale.countDocuments(query),
   ]);
   return { data: data as SaleDocument[], total };
 }

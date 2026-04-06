@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MdKitchen, MdMenuBook, MdTrendingUp, MdInventory2, MdCalculate, MdGridView } from 'react-icons/md';
+import { MdKitchen, MdMenuBook, MdTrendingUp, MdInventory2, MdCalculate, MdGridView, MdReceipt } from 'react-icons/md';
 
 const USER_LABEL_KEY = 'mordisquitos-user';
 
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/margenes', icon: MdTrendingUp, label: 'Márgenes' },
   { path: '/stock', icon: MdInventory2, label: 'Stock' },
   { path: '/bandejas', icon: MdGridView, label: 'Bandejas' },
+  { path: '/historial', icon: MdReceipt, label: 'Historial' },
   { path: '/calculadora', icon: MdCalculate, label: 'Calculadora' },
 ];
 

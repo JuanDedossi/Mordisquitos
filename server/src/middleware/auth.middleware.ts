@@ -9,7 +9,6 @@ export function authMiddleware(
   next: NextFunction,
 ): void {
   const tenants = getTenants();
-  console.log('Tenants configurados:', tenants.map(t => t.label).join(', '));
 
   // Dev mode: sin auth configurado → pasa todo
   if (tenants.length === 0) {

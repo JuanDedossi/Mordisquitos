@@ -8,7 +8,20 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, parseInt(req.query.limit as string, 10) || 20);
 
-    const { data, total } = await findAllSales(page, limit);
+    const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
+    const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
+
+    // Si dateTo viene sin hora, extenderlo al final del día
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      dateTo.setHours(23, 59, 59, 999);
+    }
+
+    const { data, total } = await findAllSales(
+      page,
+      limit,
+      dateFrom && !isNaN(dateFrom.getTime()) ? dateFrom : undefined,
+      dateTo && !isNaN(dateTo.getTime()) ? dateTo : undefined,
+    );
     res.json({
       success: true,
       data,
