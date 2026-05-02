@@ -6,42 +6,19 @@ import type { ProfitRule } from '../../types/profit-rule.types';
 interface RecipeCardProps {
   recipe: Recipe;
   profitRules: ProfitRule[];
-  onEdit: (id: string, payload: UpdateRecipePayload) => Promise<void>;
+  onEditRequest: (recipe: Recipe) => void;
   onDelete: (id: string) => void;
   onUpdatePrice: (id: string, price: number | null) => Promise<void>;
 }
 
-export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePrice }: RecipeCardProps) {
+export function RecipeCard({ recipe, profitRules, onEditRequest, onDelete, onUpdatePrice }: RecipeCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [editName, setEditName] = useState(recipe.name);
-  const [editRuleId, setEditRuleId] = useState(recipe.profitRuleId);
   const [editingPrice, setEditingPrice] = useState(false);
   const [editPrice, setEditPrice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const fmt = (v: number) =>
     `$${v.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const handleSave = async () => {
-    const payload: UpdateRecipePayload = {};
-    if (editName.trim() !== recipe.name) payload.name = editName.trim();
-    if (editRuleId !== recipe.profitRuleId) payload.profitRuleId = editRuleId;
-    if (Object.keys(payload).length === 0) { setEditingName(false); return; }
-    setLoading(true);
-    try {
-      await onEdit(recipe._id, payload);
-      setEditingName(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditName(recipe.name);
-    setEditRuleId(recipe.profitRuleId);
-    setEditingName(false);
-  };
 
   const handlePriceEdit = () => {
     setEditPrice(recipe.sellingPrice.toFixed(2));
@@ -85,51 +62,7 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
     >
       {/* Main row */}
       <div style={{ padding: 'var(--space-md) var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-        {editingName ? (
-          <>
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              autoFocus
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                borderBottom: '2px solid var(--color-primary)',
-                outline: 'none',
-                padding: 'var(--space-xs) 0',
-                background: 'transparent',
-                color: 'var(--color-text-primary)',
-                width: '100%',
-              }}
-            />
-            <select
-              value={editRuleId}
-              onChange={(e) => setEditRuleId(e.target.value)}
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.85rem',
-                border: '1.5px solid rgba(218, 193, 184, 0.4)',
-                borderRadius: 'var(--radius-sm)',
-                padding: 'var(--space-xs) var(--space-sm)',
-                color: 'var(--color-text-primary)',
-                background: 'transparent',
-                marginTop: 'var(--space-xs)',
-              }}
-            >
-              {profitRules.map((r) => (
-                <option key={r._id} value={r._id}>{r.name} — {r.marginPercentage}%</option>
-              ))}
-            </select>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-xs)', marginTop: 'var(--space-xs)' }}>
-              <button onClick={handleCancel} disabled={loading} style={iconBtnStyle}><MdClose size={20} /></button>
-              <button onClick={handleSave} disabled={loading} style={{ ...iconBtnStyle, color: 'var(--color-success)' }}><MdCheck size={20} /></button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                   {recipe.name}
@@ -195,22 +128,20 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
               </div>
             </div>
 
-            {/* Actions */}
+          {/* Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'var(--space-xs)' }}>
               <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                <button onClick={() => setEditingName(true)} style={iconBtnStyle} title="Editar"><MdEdit size={18} /></button>
+                <button onClick={() => onEditRequest(recipe)} style={iconBtnStyle} title="Editar"><MdEdit size={18} /></button>
                 <button onClick={() => setExpanded((v) => !v)} style={iconBtnStyle} title="Ver detalle">
                   {expanded ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
                 </button>
                 <button onClick={() => onDelete(recipe._id)} style={{ ...iconBtnStyle, color: 'var(--color-error)' }} title="Eliminar"><MdDelete size={18} /></button>
               </div>
             </div>
-          </>
-        )}
       </div>
 
       {/* Expanded detail */}
-      {expanded && !editingName && (
+      {expanded && (
         <div style={{ borderTop: '1px solid rgba(218, 193, 184, 0.2)', padding: 'var(--space-md) var(--space-lg)', background: '#f8f4db' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 var(--space-sm)' }}>
             Ingredientes
@@ -248,7 +179,7 @@ export function RecipeCard({ recipe, profitRules, onEdit, onDelete, onUpdatePric
               </span>
             )}
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              Margen ({recipe.marginPercentage}%): <strong>{fmt(recipe.sellingPrice - recipe.cost)}</strong>
+              Margen ({recipe.marginPercentage}%): <strong>{fmt((recipe.sellUnit === 'kg' ? recipe.sellingPrice * (recipe.yieldGrams / 1000) : recipe.sellingPrice * recipe.yieldUnits) - recipe.cost)}</strong>
             </span>
             {recipe.sellUnit === 'kg' ? (
               <>
